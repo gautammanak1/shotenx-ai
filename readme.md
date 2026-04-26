@@ -8,10 +8,11 @@ Lightning-native **agent marketplace MVP**: **Next.js** frontend in `frontend/` 
 
 ```text
 ./
-  frontend/     Next.js 16 app (pages, API routes, Supabase, Bitcoin Connect)
-  backend/      Express API (agents, payments, ASI1 builders)
+  Dockerfile      optional root image (Next frontend) for hosts that only detect ./Dockerfile
+  frontend/       Next.js 16 app + canonical frontend/Dockerfile
+  backend/        Express API + backend/Dockerfile
   docker-compose.yml
-  render.yaml     optional Render Blueprint (two Web Services)
+  render.yaml     Render Blueprint (rootDir per service — preferred over root Dockerfile alone)
 ```
 
 ---
@@ -74,7 +75,7 @@ docker compose up --build
 - **Backend**: http://localhost:8080  
 - **Persistence**: volume `shotenx_backend_data` → backend `/app/data`.
 
-Compose reads **`.env`** at the repo root for frontend substitution; backend uses **`backend/.env`** (`env_file`).
+Compose loads **one root `.env`** into **both** containers (`env_file: .env`). Copy **`cp .env.example .env`** and fill values. Compose overrides **`NEXT_PUBLIC_BACKEND_URL`** to `http://backend:8080` for the frontend container so Next can reach Express on the Docker network.
 
 **uAgent (Fetch)** — Docker images include Python + `uagents` / `uagents-core` / `requests` per the [Node.js Client Integration](https://innovationlab.fetch.ai/resources/docs/examples/integrations/nodejs-client-integration) guide. Optional host ports **8000** (frontend bridge) and **8001** → backend bridge.
 
@@ -84,8 +85,9 @@ Compose reads **`.env`** at the repo root for frontend substitution; backend use
 
 | Location | Purpose |
 |----------|---------|
-| `frontend/.env` | `NEXT_PUBLIC_*`, server route secrets — see `frontend/.env.example` |
-| `backend/.env` | `PORT`, `ALLOWED_ORIGINS`, Agentverse, ASI1, Alby — see `backend/.env.example` |
+| **`.env` (repo root)** | **Docker Compose + recommended single file** — merged frontend + backend keys; see **`.env.example`**. |
+| `frontend/.env` | Optional: only if you run `npm run dev` inside `frontend/` without using root `.env`. |
+| `backend/.env` | Optional: only for `cd backend && npm run dev` alone; Compose does **not** read it by default. |
 
 ---
 

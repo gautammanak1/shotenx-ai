@@ -1,0 +1,17 @@
+# Root Docker build (./Dockerfile) — keep context small
+.git
+.github
+.cursor
+**/.DS_Store
+.env
+.env.*
+!.env.example
+*.md
+AGENT.pdf
+node_modules
+**/.next
+**/node_modules
+backend/node_modules
+backend/dist
+frontend/node_modules
+frontend/.next
