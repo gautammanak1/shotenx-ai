@@ -1,10 +1,9 @@
-# Monorepo: frontend (Next) + backend (Express) in this repo.
-# Compose reads ./.env at repo root for ${VAR} substitution into the frontend service.
-# Backend container loads ./backend/.env
-#
+# Monorepo: frontend (Next) + backend (Express).
+# Variables: repo root `.env` (copy from `.env.example`). Compose substitutes ${VAR} from that file.
 #   docker compose up --build
 #
-# Inside Docker, Next must reach the API at http://backend:8080 (not localhost).
+# `env_file` injects the whole file into each container; `environment` below
+# documents / overrides keys (inline wins over env_file).
 
 services:
   backend:
@@ -16,9 +15,29 @@ services:
       - "8080:8080"
       - "8001:8000"
     env_file:
-      - ./backend/.env
+      - .env
     environment:
       PORT: "8080"
+      NODE_ENV: ${NODE_ENV:-production}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      AGENTVERSE_BASE_URL: ${AGENTVERSE_BASE_URL:-https://agentverse.ai}
+      AGENTVERSE_API_KEY: ${AGENTVERSE_API_KEY:-}
+      DEFAULT_L402_PRICE_SATS: ${DEFAULT_L402_PRICE_SATS:-25}
+      MDK_ACCESS_TOKEN: ${MDK_ACCESS_TOKEN:-}
+      SHOTENX_DIRECT_CHAT_INTERNAL_SECRET: ${SHOTENX_DIRECT_CHAT_INTERNAL_SECRET:-}
+      ASI_ONE_API_KEY: ${ASI_ONE_API_KEY:-}
+      ASI_ONE_BASE_URL: ${ASI_ONE_BASE_URL:-https://api.asi1.ai/v1}
+      ASI_ONE_MODEL: ${ASI_ONE_MODEL:-asi1}
+      ASI_IMAGE_MODEL: ${ASI_IMAGE_MODEL:-asi1-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      BUILDER_LLM_MODEL: ${BUILDER_LLM_MODEL:-}
+      BUILDER_IMAGE_MODEL: ${BUILDER_IMAGE_MODEL:-}
+      UAGENT_DEFAULT_SEED: ${UAGENT_DEFAULT_SEED:-frontend}
+      UAGENT_BRIDGE_PORT: ${UAGENT_BRIDGE_PORT:-8000}
+      PAYMENTS_DB_PATH: ${PAYMENTS_DB_PATH:-}
+      RATINGS_DB_PATH: ${RATINGS_DB_PATH:-}
+      WITHDRAWAL_DESTINATION: ${WITHDRAWAL_DESTINATION:-}
+      ALBY_NWC_URL: ${ALBY_NWC_URL:-}
     volumes:
       - shotenx_backend_data:/app/data
     healthcheck:
@@ -44,16 +63,21 @@ services:
     ports:
       - "3000:3000"
       - "8000:8000"
+    env_file:
+      - .env
     depends_on:
       backend:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-production}
+      # Browser + server rewrites inside Docker network
       NEXT_PUBLIC_BACKEND_URL: "http://backend:8080"
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      ASI_ONE_API_KEY: ${ASI_ONE_API_KEY}
-      AGENTVERSE_TOKEN: ${AGENTVERSE_TOKEN}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+      ASI_ONE_API_KEY: ${ASI_ONE_API_KEY:-}
+      AGENTVERSE_TOKEN: ${AGENTVERSE_TOKEN:-}
+      SHOTENX_PREMIUM_RELAY_SECRET: ${SHOTENX_PREMIUM_RELAY_SECRET:-}
+      UAGENT_BRIDGE_PORT: ${UAGENT_BRIDGE_PORT:-8000}
 
 volumes:
   shotenx_backend_data:
