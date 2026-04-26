@@ -8,7 +8,7 @@ export function WalletConnect() {
   const [connected, setConnected] = useState(false);
   const [ready, setReady] = useState(false);
   const [balanceSats, setBalanceSats] = useState<number | null>(null);
-  const [backendMode, setBackendMode] = useState<"test" | "alby-nwc" | null>(null);
+  const [backendMode, setBackendMode] = useState<"test" | "alby-nwc" | "unavailable" | null>(null);
   const [backendBalance, setBackendBalance] = useState<number | null>(null);
   const [launch, setLaunch] = useState<null | (() => void)>(null);
   const [disconnectWallet, setDisconnectWallet] = useState<null | (() => void)>(null);
@@ -47,10 +47,16 @@ export function WalletConnect() {
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
-      const info = await api.getWalletInfo();
-      if (!alive) return;
-      setBackendMode(info.mode);
-      setBackendBalance(info.balanceSats);
+      try {
+        const info = await api.getWalletInfo();
+        if (!alive) return;
+        setBackendMode(info.mode);
+        setBackendBalance(info.balanceSats);
+      } catch {
+        if (!alive) return;
+        setBackendMode("unavailable");
+        setBackendBalance(null);
+      }
     };
     void refresh();
     const id = setInterval(() => void refresh(), 15000);
@@ -73,8 +79,10 @@ export function WalletConnect() {
     backendMode === "test"
       ? { label: "Test Mode", className: "border-yellow-400/40 bg-yellow-500/10 text-yellow-600" }
       : backendMode === "alby-nwc"
-      ? { label: "Live Sats", className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-600" }
-      : null;
+        ? { label: "Live Sats", className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-600" }
+        : backendMode === "unavailable"
+          ? { label: "Backend wallet", className: "border-[#333333] bg-[#111111] text-[#666666]" }
+          : null;
 
   return (
     <div className="inline-flex flex-wrap items-center gap-2">
@@ -95,7 +103,9 @@ export function WalletConnect() {
           title={
             backendMode === "test"
               ? "Backend wallet is in test mode (mock invoices, real L402 verification)."
-              : "Backend wallet is connected to real Lightning via Alby NWC."
+              : backendMode === "alby-nwc"
+                ? "Backend wallet is connected to real Lightning via Alby NWC."
+                : "Could not reach backend wallet info (check NEXT_PUBLIC_BACKEND_URL and API)."
           }
           className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${modeBadge.className}`}
         >

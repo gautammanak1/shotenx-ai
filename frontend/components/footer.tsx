@@ -21,8 +21,8 @@ export function Footer() {
             <Link href="/docs" className="text-[#888888] hover:text-[#ffffff]">
               Docs
             </Link>
-            <Link href="/login" className="text-[#888888] hover:text-[#ffffff]">
-              Sign in
+            <Link href="/dashboard" className="text-[#888888] hover:text-[#ffffff]">
+              Dashboard
             </Link>
           </nav>
         </div>

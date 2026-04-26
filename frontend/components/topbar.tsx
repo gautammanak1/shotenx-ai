@@ -13,6 +13,7 @@ export function Topbar({ user }: Props) {
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
 
+  const displayName = user.name || user.email || "Guest";
   const initials = user.name
     ? user.name
         .split(" ")
@@ -20,9 +21,7 @@ export function Topbar({ user }: Props) {
         .join("")
         .slice(0, 2)
         .toUpperCase()
-    : user.email.slice(0, 2).toUpperCase();
-
-  const displayName = user.name || user.email;
+    : (user.email || "SX").replace(/[^a-zA-Z0-9]/g, "").slice(0, 2).toUpperCase() || "SX";
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#1a1a1a] bg-[#0a0a0a] px-4 font-mono text-[11px]">

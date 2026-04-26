@@ -10,7 +10,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
 } from "lucide-react";
-import { api, type PaymentLog } from "@/lib/api";
+import { api, type PaymentLog, type WalletInfo } from "@/lib/api";
 import { fetchUserSupabaseTransactions, type DisplayPaymentLog } from "@/lib/user-ledger";
 
 type Filter = "all" | "settled" | "consumed" | "pending" | "failed" | "expired";
@@ -38,11 +38,7 @@ const isAgentToAgent = (log: DisplayPaymentLog) =>
 
 export default function TransactionsPage() {
   const [logs, setLogs] = useState<DisplayPaymentLog[]>([]);
-  const [walletInfo, setWalletInfo] = useState<{
-    alias: string;
-    balanceSats: number;
-    mode: "test" | "alby-nwc";
-  } | null>(null);
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -167,10 +163,16 @@ export default function TransactionsPage() {
                 className={
                   walletInfo.mode === "alby-nwc"
                     ? "rounded border border-[#444444] bg-[#1a1a1a] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[#ffffff]"
-                    : "rounded border border-[#333333] bg-[#111111] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[#888888]"
+                    : walletInfo.mode === "unavailable"
+                      ? "rounded border border-[#333333] bg-[#111111] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[#666666]"
+                      : "rounded border border-[#333333] bg-[#111111] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[#888888]"
                 }
               >
-                {walletInfo.mode === "alby-nwc" ? "Live (Alby NWC)" : "Test Mode"}
+                {walletInfo.mode === "alby-nwc"
+                  ? "Live (Alby NWC)"
+                  : walletInfo.mode === "unavailable"
+                    ? "Wallet offline"
+                    : "Test Mode"}
               </span>
             </p>
           )}

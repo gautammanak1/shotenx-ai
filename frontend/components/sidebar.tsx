@@ -2,21 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ArrowLeftRight,
   PenSquare,
   PlayCircle,
-  LogOut,
-  Zap,
+  Home,
   Store,
   BookOpen,
   HelpCircle,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -30,12 +28,8 @@ const NAV = [
   { href: "/help", icon: HelpCircle, label: "Help" },
 ];
 
-const PROVIDER = [{ href: "/register", icon: PenSquare, label: "Register API" }];
-
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
   const [collapsed, setCollapsed] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
 
@@ -58,12 +52,6 @@ export function Sidebar() {
   }, []);
 
   const isActive = (href: string) => pathname === href;
-
-  const handleSignOut = async () => {
-    if (supabase) await supabase.auth.signOut();
-    router.push("/");
-  };
-
   const w = collapsed ? "w-[52px]" : "w-[220px]";
 
   return (
@@ -96,17 +84,6 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {!collapsed && (
-        <div className="px-2 pt-3">
-          <Link
-            href="/register"
-            className="flex w-full items-center justify-center border border-[#333333] bg-[#111111] py-2 text-[10px] font-semibold uppercase tracking-widest text-[#aaaaaa] transition-colors hover:border-white hover:text-white active:scale-[0.98]"
-          >
-            + Register API
-          </Link>
-        </div>
-      )}
-
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-1 py-3">
         {NAV.map(({ href, icon: Icon, label }) => (
           <Link
@@ -124,30 +101,6 @@ export function Sidebar() {
             {!collapsed && <span className="uppercase">{label}</span>}
           </Link>
         ))}
-
-        <div className={cn("pt-4", collapsed && "pt-2")}>
-          {!collapsed && (
-            <p className="px-2 pb-2 text-[9px] font-semibold uppercase tracking-widest text-[#444444]">
-              Provider
-            </p>
-          )}
-          {PROVIDER.map(({ href, icon: Icon, label }) => (
-            <Link
-              key={href}
-              href={href}
-              title={collapsed ? label : undefined}
-              className={cn(
-                "flex items-center gap-2.5 border-l-2 py-2 pl-2 pr-1 transition-colors hover:bg-[#1a1a1a]",
-                isActive(href)
-                  ? "border-[#ffffff] bg-[#111111] text-[#ffffff]"
-                  : "border-transparent text-[#555555] hover:text-[#ffffff]"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="uppercase">{label}</span>}
-            </Link>
-          ))}
-        </div>
       </nav>
 
       <div className="border-t border-[#1a1a1a] p-2">
@@ -159,14 +112,13 @@ export function Sidebar() {
             </p>
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => void handleSignOut()}
+        <Link
+          href="/"
           className="flex w-full items-center gap-2 border border-transparent py-2 pl-2 text-[#555555] transition-colors hover:bg-[#1a1a1a] hover:text-[#ffffff]"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && <span className="uppercase">Sign out</span>}
-        </button>
+          <Home className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="uppercase">Home</span>}
+        </Link>
       </div>
     </aside>
   );

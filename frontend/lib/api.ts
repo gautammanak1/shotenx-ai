@@ -69,7 +69,8 @@ export interface ReputationSummary {
 export interface WalletInfo {
   alias: string;
   balanceSats: number;
-  mode: "test" | "alby-nwc";
+  /** test / alby-nwc when backend wallet works; unavailable when fetch fails or env missing */
+  mode: "test" | "alby-nwc" | "unavailable";
 }
 
 export interface AutoAgentRunResponse {
@@ -287,25 +288,27 @@ export const api = {
     return payload.logs ?? [];
   },
 
-  /** Same-origin Next route → backend NWC balance (sidebar / wallet chip). */
+  /** Same-origin Next route → backend NWC balance (sidebar / wallet chip). Never throws. */
   async getWalletInfo(): Promise<WalletInfo> {
-    const res = await fetch("/api/alby/balance", { cache: "no-store" });
-    const payload = (await res.json()) as {
-      ok?: boolean;
-      alias?: string;
-      balanceSats?: number;
-      mode?: string;
-      error?: string;
-    };
-    if (!res.ok || payload.ok === false) {
-      throw new Error(String(payload.error ?? "wallet_info_failed"));
+    try {
+      const res = await fetch("/api/alby/balance", { cache: "no-store" });
+      const payload = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        alias?: string;
+        balanceSats?: number;
+        mode?: string;
+      };
+      const m = payload.mode;
+      const mode: WalletInfo["mode"] =
+        m === "alby-nwc" ? "alby-nwc" : m === "unavailable" ? "unavailable" : "test";
+      return {
+        alias: String(payload.alias ?? ""),
+        balanceSats: Number(payload.balanceSats ?? 0),
+        mode,
+      };
+    } catch {
+      return { alias: "", balanceSats: 0, mode: "unavailable" };
     }
-    const mode = payload.mode === "alby-nwc" ? "alby-nwc" : "test";
-    return {
-      alias: String(payload.alias ?? ""),
-      balanceSats: Number(payload.balanceSats ?? 0),
-      mode
-    };
   },
 
   async getAgentReputation(agentId: string): Promise<ReputationSummary> {
