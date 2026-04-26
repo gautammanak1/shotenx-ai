@@ -55,6 +55,21 @@ export interface BuilderAgent {
   createdAt: string;
   usageCount: number;
   earningsSats: number;
+  /** From builder reputation API when present (leaderboard / registry). */
+  averageStars?: number;
+}
+
+export interface ReputationSummary {
+  agentId: string;
+  averageStars: number;
+  ratingCount: number;
+  reputationScore: number;
+}
+
+export interface WalletInfo {
+  alias: string;
+  balanceSats: number;
+  mode: "test" | "alby-nwc";
 }
 
 export interface AutoAgentRunResponse {
@@ -270,6 +285,56 @@ export const api = {
   async getPaymentLogs(limit = 50): Promise<PaymentLog[]> {
     const payload = await get<{ logs?: PaymentLog[] }>("/api/payments/logs/recent", { limit });
     return payload.logs ?? [];
+  },
+
+  /** Same-origin Next route → backend NWC balance (sidebar / wallet chip). */
+  async getWalletInfo(): Promise<WalletInfo> {
+    const res = await fetch("/api/alby/balance", { cache: "no-store" });
+    const payload = (await res.json()) as {
+      ok?: boolean;
+      alias?: string;
+      balanceSats?: number;
+      mode?: string;
+      error?: string;
+    };
+    if (!res.ok || payload.ok === false) {
+      throw new Error(String(payload.error ?? "wallet_info_failed"));
+    }
+    const mode = payload.mode === "alby-nwc" ? "alby-nwc" : "test";
+    return {
+      alias: String(payload.alias ?? ""),
+      balanceSats: Number(payload.balanceSats ?? 0),
+      mode
+    };
+  },
+
+  async getAgentReputation(agentId: string): Promise<ReputationSummary> {
+    const path = `/api/agents/${encodeURIComponent(agentId)}/reputation`;
+    const payload = await get<{ ok?: boolean; summary?: ReputationSummary }>(path);
+    if (!payload.summary) {
+      throw new Error("reputation_fetch_failed");
+    }
+    return payload.summary;
+  },
+
+  async submitAgentRating(params: {
+    agentId: string;
+    stars: number;
+    raterId: string;
+    comment?: string;
+    checkoutId?: string;
+  }): Promise<{ summary: ReputationSummary }> {
+    const path = `/api/agents/${encodeURIComponent(params.agentId)}/rate`;
+    const payload = await postJson<{ ok?: boolean; summary?: ReputationSummary; error?: string }>(path, {
+      stars: params.stars,
+      raterId: params.raterId,
+      comment: params.comment,
+      checkoutId: params.checkoutId
+    });
+    if (!payload.summary) {
+      throw new Error(payload.error ?? "rating_submit_failed");
+    }
+    return { summary: payload.summary };
   },
 
   async createCheckout(agentId: string): Promise<Checkout> {
