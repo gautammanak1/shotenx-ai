@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Zap, TrendingUp, Activity, Users, ArrowRight, RefreshCw, CheckCircle2, Clock, XCircle, Circle } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { api, type Agent, type BuilderAgent, type PaymentLog } from "@/lib/api";
 import { useToast } from "@/components/theme-provider";
 
@@ -10,11 +19,11 @@ import { useToast } from "@/components/theme-provider";
 const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 
 const STATUS_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  settled:  { label: "Settled",  color: "text-emerald-500", icon: <CheckCircle2 className="h-3 w-3" /> },
-  pending:  { label: "Pending",  color: "text-yellow-500",  icon: <Clock className="h-3 w-3" /> },
-  consumed: { label: "Consumed", color: "text-blue-500",    icon: <CheckCircle2 className="h-3 w-3" /> },
+  settled:  { label: "Settled",  color: "text-[#ffffff]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  pending:  { label: "Pending",  color: "text-[#888888]",  icon: <Clock className="h-3 w-3" /> },
+  consumed: { label: "Consumed", color: "text-[#aaaaaa]",    icon: <CheckCircle2 className="h-3 w-3" /> },
   expired:  { label: "Expired",  color: "text-muted-foreground", icon: <XCircle className="h-3 w-3" /> },
-  failed:   { label: "Failed",   color: "text-red-500",     icon: <XCircle className="h-3 w-3" /> },
+  failed:   { label: "Failed",   color: "text-[#444444]",     icon: <XCircle className="h-3 w-3" /> },
 };
 
 /* ── inline bar chart ── */
@@ -28,11 +37,11 @@ function BarChart({ data }: { data: { label: string; value: number; sub: string 
             <span className="text-xs font-medium text-foreground truncate max-w-[140px]">
               <span className="text-muted-foreground mr-1.5">#{i + 1}</span>{d.label}
             </span>
-            <span className="text-xs font-bold text-blue-500 font-mono">{fmt(d.value)} sats</span>
+            <span className="text-xs font-bold text-[#ffffff] font-mono">{fmt(d.value)} sats</span>
           </div>
           <div className="relative h-2 w-full bg-muted overflow-hidden">
             <div
-              className="absolute inset-y-0 left-0 bg-blue-600 transition-all duration-700 ease-out group-hover:bg-blue-500"
+              className="absolute inset-y-0 left-0 bg-[#ffffff] transition-all duration-700 ease-out group-hover:bg-[#cccccc]"
               style={{ width: `${(d.value / max) * 100}%` }}
             />
           </div>
@@ -56,8 +65,8 @@ function Sparkline({ values }: { values: number[] }) {
   const last = points[points.length - 1];
   return (
     <svg width={W} height={H} className="overflow-visible">
-      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-violet-500" />
-      <circle cx={last.x} cy={last.y} r="2" className="fill-violet-500" />
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[#ffffff]" />
+      <circle cx={last.x} cy={last.y} r="2" className="fill-[#ffffff]" />
     </svg>
   );
 }
@@ -77,14 +86,14 @@ function FlowDiagram({ active }: { active: number }) {
       {FLOW.map((step, i) => (
         <div key={step.label} className="flex items-center">
           <div className={`flex flex-col items-center gap-1 px-3 py-2 transition-all duration-300 ${i <= active ? "opacity-100" : "opacity-25"}`}>
-            <div className={`flex h-9 w-9 items-center justify-center text-lg border transition-colors ${i <= active ? "border-blue-500/40 bg-blue-500/10" : "border-border bg-muted"}`}>
+            <div className={`flex h-9 w-9 items-center justify-center text-lg border transition-colors ${i <= active ? "border-[#ffffff] bg-[#1a1a1a]" : "border-border bg-muted"}`}>
               {step.icon}
             </div>
             <p className="text-[10px] font-semibold text-foreground">{step.label}</p>
             <p className="text-[9px] text-muted-foreground">{step.desc}</p>
           </div>
           {i < FLOW.length - 1 && (
-            <ArrowRight className={`h-3 w-3 shrink-0 transition-colors ${i < active ? "text-blue-500" : "text-border"}`} />
+            <ArrowRight className={`h-3 w-3 shrink-0 transition-colors ${i < active ? "text-[#ffffff]" : "text-border"}`} />
           )}
         </div>
       ))}
@@ -98,13 +107,13 @@ function StatCard({ label, value, sub, icon: Icon, trend }: { label: string; val
     <div className="border border-border bg-card p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <div className="flex h-7 w-7 items-center justify-center bg-blue-600/10">
-          <Icon className="h-3.5 w-3.5 text-blue-500" />
+        <div className="flex h-7 w-7 items-center justify-center border border-[#333333] bg-[#111111]">
+          <Icon className="h-3.5 w-3.5 text-[#ffffff]" />
         </div>
       </div>
       <p className="text-2xl font-bold text-foreground font-mono">{value}</p>
       <div className="flex items-center gap-1.5">
-        {trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-500" />}
+        {trend === "up" && <TrendingUp className="h-3 w-3 text-[#888888]" />}
         <p className="text-[11px] text-muted-foreground">{sub}</p>
       </div>
     </div>
@@ -168,6 +177,23 @@ export default function DashboardPage() {
     [leaderboard]
   );
 
+  const paymentTimeline = useMemo(() => {
+    const buckets = new Map<string, { label: string; sats: number; count: number }>();
+    for (const log of paymentLogs) {
+      const d = new Date(log.timestamp);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:00`;
+      const label = `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:00`;
+      const cur = buckets.get(key) ?? { label, sats: 0, count: 0 };
+      cur.sats += log.amountSats;
+      cur.count += 1;
+      buckets.set(key, cur);
+    }
+    return Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, v]) => ({ label: v.label, sats: v.sats, events: v.count }))
+      .slice(-48);
+  }, [paymentLogs]);
+
   const handleAutoRun = async () => {
     if (!autoPrompt.trim() || loading) return;
     setLoading(true);
@@ -202,7 +228,7 @@ export default function DashboardPage() {
           <button onClick={() => void load(true)} className="flex items-center gap-1.5 border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} /> Refresh
           </button>
-          <Link href="/agent-chat" className="flex items-center gap-1.5 bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 transition-colors">
+          <Link href="/agent-chat" className="flex items-center gap-1.5 border border-[#ffffff] bg-[#ffffff] px-3 py-1.5 text-xs font-semibold text-[#000000] hover:bg-[#dddddd] transition-colors">
             <Zap className="h-3 w-3 fill-white" /> Run Agent
           </Link>
         </div>
@@ -224,8 +250,8 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-foreground">L402 Payment Flow</p>
               <p className="text-xs text-muted-foreground mt-0.5">Live animation of every agent request cycle</p>
             </div>
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-emerald-500">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[#888888]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#ffffff] animate-pulse" /> Live
             </span>
           </div>
           <div className="overflow-x-auto">
@@ -257,6 +283,42 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Payment volume over time ── */}
+      {paymentTimeline.length > 0 && (
+        <div className="border border-border bg-card p-5">
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-foreground">Lightning volume (by hour)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Sats from payment log events — live backend feed</p>
+          </div>
+          <div className="h-56 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={paymentTimeline} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "#555555", fontFamily: "var(--font-geist-mono), monospace" }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#555555", fontFamily: "var(--font-geist-mono), monospace" }}
+                  width={36}
+                />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: 12,
+                    backgroundColor: "#111111",
+                    border: "1px solid #333333",
+                    color: "#ffffff",
+                  }}
+                  formatter={(value) => [`${typeof value === "number" ? value : Number(value) || 0} sats`, "Volume"]}
+                />
+                <Line type="monotone" dataKey="sats" stroke="#ffffff" strokeWidth={1.5} dot={false} name="sats" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* ── Bar chart + payment feed ── */}
       <div className="grid gap-4 lg:grid-cols-2">
 
@@ -267,7 +329,7 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-foreground">Top Agent Earnings</p>
               <p className="text-xs text-muted-foreground mt-0.5">Sats earned by top 6 agents</p>
             </div>
-            <Link href="/leaderboard" className="text-xs text-blue-500 hover:underline flex items-center gap-1">
+            <Link href="/leaderboard" className="text-xs text-[#aaaaaa] hover:text-[#ffffff] hover:underline flex items-center gap-1">
               Full leaderboard <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -289,7 +351,7 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground mt-0.5">Live payment event stream</p>
             </div>
             <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" /> streaming
+              <span className="h-1.5 w-1.5 rounded-full bg-[#ffffff] animate-pulse" /> streaming
             </span>
           </div>
           <div className="space-y-1.5 max-h-72 overflow-auto">
@@ -309,7 +371,7 @@ export default function DashboardPage() {
                     <p className="text-[10px] text-muted-foreground truncate">{log.requestMethod} {log.requestPath}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs font-bold text-blue-500 font-mono">{log.amountSats}s</p>
+                    <p className="text-xs font-bold text-[#ffffff] font-mono">{log.amountSats}s</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString()}</p>
                   </div>
                 </div>
@@ -337,7 +399,7 @@ export default function DashboardPage() {
           value={autoPrompt}
           onChange={(e) => setAutoPrompt(e.target.value)}
           rows={3}
-          className="mt-4 w-full border border-border bg-background p-3 text-sm outline-none focus:border-blue-500/50 transition-colors"
+          className="mt-4 w-full border border-border bg-background p-3 text-sm outline-none focus:border-[#ffffff] transition-colors"
           placeholder="Ask anything — e.g. summarize the latest AI news..."
         />
         <div className="mt-3 flex items-center justify-between">
@@ -345,7 +407,7 @@ export default function DashboardPage() {
           <button
             onClick={handleAutoRun}
             disabled={loading || !autoPrompt.trim()}
-            className="flex items-center gap-2 bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 border border-[#ffffff] bg-[#ffffff] px-4 py-2 text-sm font-semibold text-[#000000] hover:bg-[#dddddd] transition-colors disabled:opacity-50"
           >
             <Zap className="h-3.5 w-3.5 fill-white" />
             {loading ? "Running..." : "Run + Auto Pay"}

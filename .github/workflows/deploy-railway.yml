@@ -1,0 +1,31 @@
+# Optional: deploy this repo to Railway from GitHub Actions.
+#
+# GitHub repository secret names must match:
+#   [a-zA-Z0-9_] only, no spaces; must start with [a-zA-Z_] (see repo Settings → Secrets).
+# Use exactly: RAILWAY_TOKEN (not RAILWAY-TOKEN, not "Railway Token", etc.)
+#
+# 1. Create a Railway project + Web service linked to this repo (or use CLI).
+# 2. Add repo secret RAILWAY_TOKEN (Railway Account → Tokens; paste value in GitHub secret name RAILWAY_TOKEN).
+# 3. In Railway service settings, set root directory if needed and all env vars from .env.example.
+#
+# This workflow only runs when you trigger it manually (avoids failing pushes without tokens).
+
+name: Deploy (Railway)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach
+        # Run `railway link` locally once and commit .railway/ or set RAILWAY_PROJECT_ID / service via Railway dashboard GitHub integration instead.

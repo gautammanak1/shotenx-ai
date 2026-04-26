@@ -1,149 +1,338 @@
 "use client";
 
-import { useState } from "react";
-import { Download, SlidersHorizontal } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Download,
+  RefreshCw,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+} from "lucide-react";
+import { api, type PaymentLog } from "@/lib/api";
+import { fetchUserSupabaseTransactions, type DisplayPaymentLog } from "@/lib/user-ledger";
 
-const TRANSACTIONS = [
-  { id: "srt_3PzQislHg7", customer: "Ryan Parker", amount: "$89.00", status: "Paid", method: "•••• 1090", desc: "Document Summarizer", date: "Feb 03, 2025 10:19 am", refunded: "—" },
-  { id: "srt_3PzQislHg8", customer: "Emma Thompson", amount: "$149.00", status: "Paid", method: "•••• 2412", desc: "Code Reviewer", date: "Feb 03, 2025 10:19 am", refunded: "—" },
-  { id: "srt_3PzQislHg9", customer: "Harper Butler", amount: "$90.00", status: "Paid", method: "•••• 1090", desc: "Sentiment Analyzer", date: "Feb 03, 2025 10:19 am", refunded: "—" },
-  { id: "srt_5TjQyQzJk1", customer: "Benjamin Foster", amount: "$149.00", status: "Paid", method: "•••• 2412", desc: "Document Summarizer", date: "Feb 03, 2025 10:19 am", refunded: "—" },
-  { id: "srt_5TjQyQzJk2", customer: "Liam Garcia", amount: "$110.00", status: "Refunded", method: "•••• 2345", desc: "Web Scraper", date: "Feb 03, 2025 10:19 am", refunded: "Feb 04, 2025 10:45..." },
-  { id: "srt_2LpQz5QjK1", customer: "Ava Martinez", amount: "$130.00", status: "Paid", method: "•••• 6789", desc: "Image Captioner", date: "Feb 04, 2025 11:00 am", refunded: "—" },
-  { id: "srt_4MkQhZxP1", customer: "Ethan Davis", amount: "$160.00", status: "Pending", method: "•••• 4321", desc: "Code Reviewer", date: "Feb 04, 2025 11:30 am", refunded: "—" },
-  { id: "srt_6PzQhYxQk1", customer: "Chloe Hall", amount: "$95.00", status: "Paid", method: "•••• 2233", desc: "Currency Converter", date: "Feb 05, 2025 09:15 am", refunded: "—" },
-  { id: "srt_8HgQz3TjK1", customer: "James Taylor", amount: "$175.00", status: "Paid", method: "•••• 9988", desc: "Document Summarizer", date: "Feb 05, 2025 09:45 am", refunded: "—" },
-  { id: "srt_1QzTg8PjH1", customer: "Charlotte Anderson", amount: "$145.00", status: "Pending", method: "•••• 5567", desc: "Sentiment Analyzer", date: "Feb 05, 2025 10:15 am", refunded: "—" },
-  { id: "srt_9YgQh2XjK1", customer: "Oliver Thomas", amount: "$90.00", status: "Paid", method: "•••• 1234", desc: "Web Scraper", date: "Feb 05, 2025 10:45 am", refunded: "—" },
-  { id: "srt_3FkQz4YjK1", customer: "Amelia White", amount: "$130.00", status: "Paid", method: "•••• 7890", desc: "Image Captioner", date: "Feb 05, 2025 11:00 am", refunded: "—" },
-  { id: "srt_4JkQh5KjL1", customer: "Henry Martin", amount: "$85.00", status: "Pending", method: "•••• 3456", desc: "Code Reviewer", date: "Feb 05, 2025 11:15 am", refunded: "—" },
-  { id: "srt_7MnQp9RkL2", customer: "Sofia Lee", amount: "$200.00", status: "Paid", method: "•••• 8821", desc: "Document Summarizer", date: "Feb 06, 2025 09:00 am", refunded: "—" },
-  { id: "srt_2BvQr6SkM3", customer: "Noah Wilson", amount: "$55.00", status: "Paid", method: "•••• 4412", desc: "Currency Converter", date: "Feb 06, 2025 10:30 am", refunded: "—" }
-];
+type Filter = "all" | "settled" | "consumed" | "pending" | "failed" | "expired";
 
-const STATUS_STYLE: Record<string, string> = {
-  Paid: "badge-green",
-  Refunded: "badge-blue",
-  Pending: "badge-orange"
+const STATUS_META: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+  settled: { label: "Settled", className: "text-[#ffffff]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  consumed: { label: "Consumed", className: "text-[#aaaaaa]", icon: <CheckCircle2 className="h-3 w-3" /> },
+  pending: { label: "Pending", className: "text-[#888888]", icon: <Clock className="h-3 w-3" /> },
+  expired: { label: "Expired", className: "text-muted-foreground", icon: <XCircle className="h-3 w-3" /> },
+  failed: { label: "Failed", className: "text-[#444444]", icon: <XCircle className="h-3 w-3" /> },
 };
 
-const STATS = [
-  { label: "Succeeded", val: "1,280", change: "+56%", up: true },
-  { label: "Refunded", val: "3", change: "+100%", up: false },
-  { label: "Failed", val: "28", change: "+10%", up: false },
-  { label: "Disputed", val: "0", change: "", up: true },
-  { label: "Uncaptured", val: "0", change: "", up: true }
-];
+const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+const formatPath = (raw: string) => {
+  if (!raw) return "/unknown";
+  return raw.length > 56 ? `${raw.slice(0, 56)}…` : raw;
+};
+
+const isAgentToAgent = (log: DisplayPaymentLog) =>
+  log.ledger === "backend" &&
+  (log.event === "agent_autopay" ||
+    log.event === "verified" ||
+    log.requestPath.includes("auto-run"));
 
 export default function TransactionsPage() {
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [logs, setLogs] = useState<DisplayPaymentLog[]>([]);
+  const [walletInfo, setWalletInfo] = useState<{
+    alias: string;
+    balanceSats: number;
+    mode: "test" | "alby-nwc";
+  } | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
 
-  const filtered = statusFilter === "All"
-    ? TRANSACTIONS
-    : TRANSACTIONS.filter((t) => t.status === statusFilter);
+  const load = async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
+    try {
+      const [rows, info, sbRows] = await Promise.all([
+        api.getPaymentLogs(200),
+        api.getWalletInfo(),
+        fetchUserSupabaseTransactions(),
+      ]);
+      const backendTagged: DisplayPaymentLog[] = rows.map((l) => ({ ...l, ledger: "backend" }));
+      const merged = [...sbRows, ...backendTagged].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      setLogs(merged);
+      setWalletInfo({ alias: info.alias, balanceSats: info.balanceSats, mode: info.mode });
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load transactions");
+    } finally {
+      setLoading(false);
+      if (showRefresh) setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    const id = setInterval(() => void load(), 8000);
+    return () => clearInterval(id);
+  }, []);
+
+  const filtered = useMemo(
+    () => (filter === "all" ? logs : logs.filter((log) => log.status === filter)),
+    [logs, filter]
+  );
+
+  const supabaseCount = useMemo(() => logs.filter((l) => l.ledger === "supabase").length, [logs]);
+
+  const stats = useMemo(() => {
+    const success = logs.filter((log) => log.status === "settled" || log.status === "consumed");
+    const totalSats = success.reduce((sum, log) => sum + log.amountSats, 0);
+    return {
+      succeededCount: success.length,
+      totalSats,
+      pendingCount: logs.filter((log) => log.status === "pending").length,
+      failedCount: logs.filter((log) => log.status === "failed").length,
+      a2aCount: logs.filter(isAgentToAgent).length,
+    };
+  }, [logs]);
+
+  const exportCsv = () => {
+    if (filtered.length === 0) return;
+    const header = "id,timestamp,ledger,direction,amountSats,event,status,method,path";
+    const lines = filtered.map((log) =>
+      [
+        log.id,
+        log.timestamp,
+        log.ledger,
+        isAgentToAgent(log) ? "agent->agent" : "user->agent",
+        log.amountSats,
+        log.event,
+        log.status,
+        log.requestMethod,
+        log.requestPath,
+      ]
+        .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+        .join(","),
+    );
+    const blob = new Blob([`${header}\n${lines.join("\n")}`], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `shotenx-transactions-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-foreground">Transactions</h1>
+        <div>
+          <h1 className="font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#ffffff]">
+            Transactions
+          </h1>
+          <p className="mt-1 text-xs text-[#888888]">
+            Backend L402 log plus your Supabase ledger when configured · auto-refreshes every 8s
+            {supabaseCount > 0 && (
+              <span className="text-[#aaaaaa]"> · {supabaseCount} from Supabase</span>
+            )}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
-          <button className="btn-outline flex items-center gap-1.5">
-            <Download className="h-3.5 w-3.5" /> Export
+          <button
+            onClick={() => void load(true)}
+            className="flex items-center gap-1.5 border border-border bg-card px-3 py-1.5 text-xs"
+          >
+            <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
           </button>
-          <button className="btn-outline flex items-center gap-1.5">
-            Last 30 days ▾
+          <button
+            onClick={exportCsv}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-1.5 border border-border bg-card px-3 py-1.5 text-xs disabled:opacity-50"
+          >
+            <Download className="h-3 w-3" /> Export CSV
           </button>
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-5 gap-3">
-        {STATS.map(({ label, val, change, up }) => (
-          <div key={label} className="border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-foreground">{val}</span>
-              {change && (
-                <span className={`text-xs font-medium ${up ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
-                  {change}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
+      {/* Wallet + stats row */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="border border-border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Wallet</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">{walletInfo?.alias ?? "—"}</p>
+          {walletInfo && (
+            <p className="mt-1 text-[11px]">
+              <span
+                className={
+                  walletInfo.mode === "alby-nwc"
+                    ? "rounded border border-[#444444] bg-[#1a1a1a] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[#ffffff]"
+                    : "rounded border border-[#333333] bg-[#111111] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-[#888888]"
+                }
+              >
+                {walletInfo.mode === "alby-nwc" ? "Live (Alby NWC)" : "Test Mode"}
+              </span>
+            </p>
+          )}
+        </div>
+        <div className="border border-border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Balance</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-foreground">
+            {fmt(walletInfo?.balanceSats ?? 0)}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">sats available</p>
+        </div>
+        <div className="border border-border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Settled</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-[#ffffff]">
+            {fmt(stats.totalSats)}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">{stats.succeededCount} events</p>
+        </div>
+        <div className="border border-border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">A2A calls</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-[#ffffff]">{stats.a2aCount}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">agent paid agent</p>
+        </div>
+        <div className="border border-border bg-card p-4">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Health</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-foreground">
+            {stats.pendingCount}
+            <span className="text-sm text-muted-foreground"> / </span>
+            <span className="text-[#666666]">{stats.failedCount}</span>
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">pending / failed</p>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2">
-        {["All", "Paid", "Refunded", "Pending"].map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border ${
-              statusFilter === s
-                ? "border-blue-600 bg-blue-600 text-white"
-                : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <SlidersHorizontal className="h-3 w-3" /> {s}
-          </button>
-        ))}
-        <div className="ml-auto flex gap-2">
-          <button className="btn-outline">Analyze</button>
-          <button className="btn-outline">Edit columns</button>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {(["all", "settled", "consumed", "pending", "failed", "expired"] as Filter[]).map(
+          (option) => (
+            <button
+              key={option}
+              onClick={() => setFilter(option)}
+              className={`flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider transition-colors active:scale-[0.98] ${
+                filter === option
+                  ? "border-[#ffffff] bg-[#ffffff] text-[#000000]"
+                  : "border-[#222222] text-[#888888] hover:border-[#444444] hover:bg-[#111111] hover:text-[#ffffff]"
+              }`}
+            >
+              {option === "all" ? "All" : STATUS_META[option]?.label ?? option}
+              <span className="opacity-70">
+                {option === "all"
+                  ? logs.length
+                  : logs.filter((log) => log.status === option).length}
+              </span>
+            </button>
+          ),
+        )}
       </div>
 
+      {error && (
+        <div className="rounded-md border border-[#444444] bg-[#111111] p-3 font-mono text-sm text-[#aaaaaa]">
+          {error}
+        </div>
+      )}
+
       {/* Table */}
-      <div className="border border-border bg-card overflow-hidden">
+      <div className="overflow-hidden border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/30">
-              <th className="w-8 px-4 py-3"><input type="checkbox" className="h-3.5 w-3.5" /></th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Customer</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Amount</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Payment method</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Description</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Refunded date</th>
-              <th className="px-4 py-3" />
+            <tr className="border-b border-[#1a1a1a] bg-[#0a0a0a] text-left font-mono text-[10px] uppercase tracking-[0.2em] text-[#555555]">
+              <th className="px-4 py-3">When</th>
+              <th className="px-4 py-3">Store</th>
+              <th className="px-4 py-3">Direction</th>
+              <th className="px-4 py-3">Amount</th>
+              <th className="px-4 py-3">Event</th>
+              <th className="px-4 py-3">Endpoint</th>
+              <th className="px-4 py-3">Checkout</th>
+              <th className="px-4 py-3">Status</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((t, i) => (
-              <tr key={t.id} className={`table-row-hover ${i < filtered.length - 1 ? "border-b border-border" : ""}`}>
-                <td className="px-4 py-3"><input type="checkbox" className="h-3.5 w-3.5" /></td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-muted text-[10px] font-bold text-muted-foreground">
-                      {t.customer[0]}
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{t.customer}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 font-mono text-sm font-semibold text-foreground">{t.amount}</td>
-                <td className="px-4 py-3">
-                  <span className={STATUS_STYLE[t.status]}>{t.status}</span>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{t.method}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[140px]">{t.id.slice(0, 16)}...</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{t.date}</td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">{t.refunded}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  <button className="text-xs hover:text-foreground">···</button>
+            {loading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  Loading transactions…
                 </td>
               </tr>
-            ))}
+            )}
+            {!loading && filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  No transactions yet. Run a paid flow on /demo, /agent-chat, or /marketplace. Apply the SQL
+                  migration in <code className="text-[10px]">supabase/migrations/</code> to enable your Supabase
+                  ledger.
+                </td>
+              </tr>
+            )}
+            {filtered.map((log, idx) => {
+              const meta = STATUS_META[log.status] ?? STATUS_META.pending;
+              const a2a = isAgentToAgent(log);
+              return (
+                <tr
+                  key={log.id}
+                  className={`hover:bg-[#111111] ${idx < filtered.length - 1 ? "border-b border-[#1a1a1a]" : ""}`}
+                >
+                  <td className="px-4 py-2 text-[11px] text-muted-foreground">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 text-[11px]">
+                    <span
+                      className={
+                        log.ledger === "supabase"
+                          ? "rounded border border-[#ffffff] bg-[#1a1a1a] px-1.5 py-0.5 font-mono text-[10px] text-[#ffffff]"
+                          : "rounded border border-[#333333] px-1.5 py-0.5 font-mono text-[10px] text-[#888888]"
+                      }
+                    >
+                      {log.ledger === "supabase" ? "Supabase" : "Node"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-[11px]">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[10px] ${
+                        a2a
+                          ? "border-[#444444] text-[#cccccc]"
+                          : "border-[#333333] text-[#888888]"
+                      }`}
+                    >
+                      {a2a ? (
+                        <ArrowUpFromLine className="h-3 w-3" />
+                      ) : (
+                        <ArrowDownToLine className="h-3 w-3" />
+                      )}
+                      {a2a ? "Agent → Agent" : "User → Agent"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 font-mono text-sm font-semibold text-[#ffffff]">
+                    {log.amountSats} sats
+                  </td>
+                  <td className="px-4 py-2 text-xs">{log.event}</td>
+                  <td className="px-4 py-2 font-mono text-[11px] text-muted-foreground">
+                    {log.requestMethod} {formatPath(log.requestPath)}
+                  </td>
+                  <td className="px-4 py-2 font-mono text-[11px] text-muted-foreground">
+                    {log.checkoutId ? `${log.checkoutId.slice(0, 8)}…` : "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex items-center gap-1 text-xs ${meta.className}`}>
+                      {meta.icon} {meta.label}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-        <div className="flex items-center justify-between border-t border-border px-4 py-3">
-          <p className="text-xs text-muted-foreground">{filtered.length} of 1,280 results</p>
-          <div className="flex gap-2">
-            <button className="btn-outline">Prev</button>
-            <button className="btn-outline">Next</button>
-          </div>
+        <div className="flex items-center justify-between border-t border-border px-4 py-3 text-[11px] text-muted-foreground">
+          <p>
+            {filtered.length} of {logs.length} events
+          </p>
+          <p>
+            Sources: <span className="font-mono">public.transactions</span> +{" "}
+            <span className="font-mono">/api/payments/logs/recent</span>
+          </p>
         </div>
       </div>
     </div>

@@ -71,15 +71,15 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background">
+    <header className="sticky top-0 z-50 border-b border-[#1a1a1a] bg-[#0a0a0a]">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-sm text-foreground">
-          <div className="flex h-7 w-7 items-center justify-center bg-violet-600">
-            <Zap className="h-4 w-4 fill-white text-white" />
+        <Link href="/" className="flex items-center gap-2 font-mono text-sm font-semibold tracking-tight text-[#ffffff]">
+          <div className="flex h-7 w-7 items-center justify-center border border-[#333333] bg-[#000000]">
+            <Zap className="h-4 w-4 text-[#ffffff]" />
           </div>
-          ShotenX AI
+          ShotenX
         </Link>
 
         {/* Nav links */}
@@ -88,8 +88,8 @@ export function Navbar() {
             <Link key={l.href} href={l.href}
               className={`px-3 py-1.5 text-sm transition-colors ${
                 pathname === l.href
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "font-medium text-[#ffffff]"
+                  : "text-[#555555] hover:text-[#ffffff]"
               }`}>
               {l.label}
             </Link>
@@ -113,7 +113,7 @@ export function Navbar() {
                 onClick={() => setMenuOpen((o) => !o)}
                 className="flex items-center gap-2 border border-border bg-muted/40 pl-1 pr-2.5 h-8 hover:bg-muted transition-colors"
               >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-violet-600 text-[10px] font-bold text-white">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center border border-[#333333] bg-[#000000] font-mono text-[10px] font-bold text-[#ffffff]">
                   {user.initials}
                 </div>
                 <span className="max-w-[120px] truncate text-xs font-medium text-foreground">
@@ -126,7 +126,7 @@ export function Navbar() {
                 <>
                   {/* backdrop */}
                   <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-full z-20 mt-1 w-52 border border-border bg-card shadow-lg">
+                  <div className="absolute right-0 top-full z-20 mt-1 w-52 border border-[#333333] bg-[#111111] shadow-lg">
                     <div className="border-b border-border px-4 py-3">
                       <p className="text-xs font-semibold text-foreground truncate">{user.name || "Account"}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
@@ -147,7 +147,7 @@ export function Navbar() {
                     </div>
                     <div className="border-t border-border p-1">
                       <button onClick={handleSignOut}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-500/5 transition-colors">
+                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-[#888888] hover:bg-[#1a1a1a] hover:text-[#ffffff] transition-colors">
                         <LogOut className="h-3.5 w-3.5" /> Sign out
                       </button>
                     </div>
@@ -165,7 +165,7 @@ export function Navbar() {
                 Sign in
               </Link>
               <Link href="/login"
-                className="bg-violet-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-violet-500 transition-colors">
+                className="bg-[#ffffff] px-4 py-1.5 font-mono text-xs font-semibold uppercase tracking-widest text-[#000000] hover:bg-[#dddddd] active:scale-[0.98]">
                 Get started
               </Link>
             </>

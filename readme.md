@@ -1,368 +1,181 @@
+# ShotenX AI
 
-<p align="center">
-  <img src="assets/shotenx_ai_logo.png" alt="ShotenX_AI Logo" width="420"/>
-</p>
-
-<h1 align="center">🚀 ShotenX_AI</h1>
-
-<p align="center"><strong>Autonomous Agent Economy — Powered by AI + Lightning Network</strong></p>
+Lightning-native **agent marketplace MVP**: browse agents, pay with **L402 / invoices**, run **builder** and **Agentverse** flows from **Next.js** (`ShotenX_AI`) and **Express** (`shotenx_ai_backend`).
 
 ---
 
-**ShotenX_AI** is an AI-powered agent system that enables **autonomous payments and services** using the Lightning Network.
-
-It allows agents to:
-- 🤖 Request services
-- 💸 Pay instantly
-- ⚡ Get results in real-time
-
----
-
-## ⚡ What is This?
-
-ShotenX_AI introduces a **new agent economy** where:
-
-> **"Agents can pay, earn, and interact without humans."**
-
-Instead of API keys or subscriptions:
-- Payment = Access
-- No login required
-- Fully automated flow
-
----
-
-## 🔥 Why Lightning Network?
-
-The **Lightning Network** is a Layer-2 payment system on Bitcoin that enables:
-- ⚡ Instant transactions
-- 💰 Near-zero fees
-- 🔁 High scalability
-- 🤖 Machine-to-machine payments
-
-It makes **micropayments practical**, allowing agents to pay per request in real-time.
-
----
-
-## 🔄 Flowchart
+## Architecture
 
 ```mermaid
-flowchart TD
-    A[User / Agent Request] --> B[AI Agent]
-    B --> C{Need External Service?}
-
-    C -- Yes --> D[Service API]
-    D --> E[L402 Paywall]
-    E --> F[Generate Invoice]
-    F --> G[Pay via Lightning]
-    G --> H[Payment Verified]
-    H --> I[Execute Service]
-    I --> J[Return Response]
-
-    C -- No --> K[Handled Internally]
-    K --> J
-
-    J --> L[Final Output]
+flowchart LR
+  subgraph Browser
+    U[User]
+  end
+  subgraph Next["Next.js :3000"]
+    P[Pages / API routes]
+    RW["/backend/* rewrite"]
+  end
+  subgraph Express["Express :8080"]
+    B[REST /api/*]
+    L[Payments + L402]
+    A[Agents + registry]
+  end
+  U --> P
+  P --> RW
+  RW --> B
+  P --> P
+  B --> L
+  B --> A
 ```
+
+- **Browser** talks only to **Next** (same origin).  
+- **`/backend/*`** is proxied **server-side** to the API base URL (`NEXT_PUBLIC_BACKEND_URL`).  
+- **Premium Agentverse** path: Next `/api/premium/agent-query` → after pay → backend `/api/agents/direct-chat`.
 
 ---
 
-## 🔁 Sequence Diagram
+## Request flow (paid builder run)
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant A as Agent
-    participant S as API
-    participant P as Paywall
-    participant LN as Lightning
-
-    U->>A: Request
-    A->>S: API Call
-    S->>P: Payment Required
-    P-->>A: Invoice
-
-    A->>LN: Pay
-    LN-->>P: Confirmed
-
-    P-->>S: Access Granted
-    S-->>A: Result
-    A-->>U: Response
+  participant U as Browser
+  participant N as Next.js
+  participant E as Express API
+  participant L as Lightning / wallet
+  U->>N: POST /api/agents/.../run (via /backend proxy)
+  N->>E: Forward JSON
+  E-->>U: 402 + invoice (L402)
+  U->>L: Pay invoice
+  U->>N: Retry with Authorization L402
+  N->>E: Forward + preimage
+  E-->>U: 200 + agent result
 ```
 
 ---
 
-## 🧠 Core Idea
+## Repositories
 
-* 💳 No API keys
-* 🔐 No authentication friction
-* 💸 Pay-per-use economy
-* 🤖 Agent-to-Agent transactions
+| Repo | Role |
+|------|------|
+| **ShotenX_AI** (this repo) | Next.js 16 UI, API routes, Supabase auth, Bitcoin Connect |
+| **shotenx_ai_backend** (sibling) | Express, agents registry, payments, ASI1 / OpenAI builders |
 
----
-
-## 🛠️ Use Cases
-
-* AI APIs (summarization, code, data)
-* Agent marketplaces
-* Paid APIs without login
-* Human + AI hybrid services
-* Gaming & entertainment agents
+Clone both next to each other for Docker Compose paths to work out of the box.
 
 ---
 
-## 🏗️ Tech Stack
+## Environment variables
 
-| Tool | Purpose |
-|---|---|
-| Next.js 16 (Turbopack) | Framework |
-| TypeScript | Language |
-| Tailwind CSS | Styling |
-| Supabase | Auth (email, Google, GitHub) |
-| Recharts | Dashboard charts |
-| Lucide React | Icons |
-| Lightning Network | Payments |
-| Alby SDK | Wallet integration |
-| MoneyDevKit | Payment processing |
+### Frontend (`ShotenX_AI/.env`)
 
----
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `NEXT_PUBLIC_BACKEND_URL` | Yes | Express base URL (browser uses `/backend/*` rewrite from Next). |
+| `NEXT_PUBLIC_SUPABASE_URL` | For auth | Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For auth | Supabase anon key. |
 
-## 📁 Project Structure
+Optional (see `.env.example`): ASI1 keys on **server** routes, Alby / L402 secrets, Agentverse token, internal relay secret.
 
-```
-app/
-├── page.tsx                  # Landing page
-├── login/page.tsx            # Sign in / Sign up
-├── docs/page.tsx             # Public API docs
-├── marketplace/page.tsx      # Agent marketplace (protected)
-├── auth/callback/route.ts    # OAuth callback handler
-├── (dashboard)/
-│   ├── layout.tsx            # Dashboard shell (auth guard)
-│   ├── dashboard/page.tsx    # Overview + charts
-│   ├── transactions/page.tsx # Transaction history
-│   ├── demo/page.tsx         # Live L402 demo
-│   ├── register/page.tsx     # Register your API
-│   └── help/page.tsx         # Help center + FAQs
-├── agent/[agentAddress]/page.tsx # Agent detail pages
-├── alby/page.tsx             # Alby integration
-├── api/
-│   ├── agent-chat/route.ts   # Agent chat API
-│   ├── alby/                 # Alby payment endpoints
-│   ├── market/               # Marketplace APIs
-│   ├── mdk/route.ts          # MoneyDevKit webhook
-│   └── premium/              # Premium features
-├── chat-pay/page.tsx         # Chat payment interface
-├── checkout/[id]/page.tsx    # Payment checkout
-└── checkout/success/page.tsx # Payment success
+### Backend (`shotenx_ai_backend/.env`)
 
-components/
-├── sidebar.tsx               # Dashboard sidebar nav
-├── topbar.tsx                # Dashboard topbar (user, theme, docs, help)
-├── theme-provider.tsx        # Theme context (light/dark)
-├── theme-toggle.tsx          # Sun/moon toggle button
-├── grid-background.tsx       # Canvas grid animation
-└── ui/                       # Reusable UI components
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `PORT` | No (default 8080) | Listen port. |
+| `ALLOWED_ORIGINS` | Yes in prod | CSV of browser origins for CORS. |
+| `AGENTVERSE_API_KEY` | For Agentverse | Search + direct chat. |
+| `ASI_ONE_API_KEY` | For ASI1 builders | Chat + image preset agents. |
 
-lib/
-├── api.ts                    # Backend API client
-├── supabase.ts               # Supabase browser client
-└── supabase-server.ts        # Supabase server client + route protection
-```
+See each repo’s **`.env.example`** for the full optional set (OpenAI, image models, rate limits, etc.).
 
 ---
 
-## 🚀 Getting Started
+## Local development
 
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Supabase account
-- Alby wallet (for Lightning payments)
-
-### 1. Install dependencies
+**Backend**
 
 ```bash
-npm install
+cd shotenx_ai_backend
+cp .env.example .env   # fill values
+npm ci && npm run dev
 ```
 
-### 2. Set environment variables
-
-Create a `.env.local` file:
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-
-# Backend API (if separate)
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-
-# Alby (for payments)
-ALBY_NWC_URL=your-nostr-wallet-connect-url
-
-# MoneyDevKit
-WITHDRAWAL_DESTINATION=your-lightning-address
-
-# AgentVerse (for AI agents)
-AGENTVERSE_TOKEN=your-agentverse-token
-```
-
-### 3. Configure Supabase
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Copy your **Project URL** and **anon key** into `.env.local`
-3. Enable **Google** and **GitHub** providers in Authentication → Providers
-4. Set redirect URLs in Authentication → URL Configuration:
-   - Site URL: `http://localhost:3000`
-   - Redirect URLs: `http://localhost:3000/auth/callback`
-
-### 4. Configure Google OAuth
-
-1. Go to [console.cloud.google.com](https://console.cloud.google.com)
-2. Create OAuth 2.0 credentials
-3. Add authorized redirect URI: `https://your-project.supabase.co/auth/v1/callback`
-4. Paste Client ID + Secret into Supabase → Providers → Google
-
-### 5. Configure GitHub OAuth
-
-1. Go to GitHub Settings → Developer settings → OAuth Apps
-2. Create a new OAuth App
-3. Set Authorization callback URL: `https://your-project.supabase.co/auth/v1/callback`
-4. Paste Client ID + Secret into Supabase → Providers → GitHub
-
-### 6. Run the development server
+**Frontend**
 
 ```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
----
-
-## 🔐 Auth Flow
-
-```
-Landing page → Sign in / Sign up → /login
-  ├── Email + password  → dashboard
-  ├── Google OAuth      → /auth/callback → dashboard
-  └── GitHub OAuth      → /auth/callback → dashboard
-
-Unauthenticated access to protected route → redirect to /login
+cd ShotenX_AI
+cp .env.example .env   # set NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+npm ci && npm run dev
 ```
 
 ---
 
-## ⚡ L402 Payment Flow
+## Docker Compose (full stack)
 
+Layout:
+
+```text
+parent/
+  ShotenX_AI/          ← this repo (compose file lives here)
+  shotenx_ai_backend/
 ```
-Agent → GET /api/agents          # discover services
-Agent → POST /api/summarize      # call endpoint
-Server → HTTP 402 + invoice      # payment required
-Agent → pay Lightning invoice    # wallet pays
-Agent → POST /api/summarize      # retry with x-payment-token
-Server → 200 + result            # access granted
-```
 
----
-
-## 📡 API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/agents` | List all agents |
-| POST | `/api/agent-chat` | Chat with agents |
-| POST | `/api/alby/invoice` | Create Lightning invoice |
-| POST | `/api/alby/pay` | Pay invoice |
-| GET | `/api/market/llm-agent-search` | Search agents |
-| POST | `/api/mdk` | MoneyDevKit webhook |
-| POST | `/api/premium/agent-query` | Premium agent queries |
-
----
-
-## 🧪 Development Scripts
+From **ShotenX_AI**:
 
 ```bash
-npm run dev          # Start development server
-npm run dev:turbo    # Start with Turbopack
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
+export BACKEND_CONTEXT=../shotenx_ai_backend   # default if repos are siblings
+docker compose up --build
+```
+
+- **Frontend**: http://localhost:3000  
+- **Backend**: http://localhost:8080  
+- **Persistence**: named volume `shotenx_backend_data` → `/app/data` (payments / ratings files).
+
+**uAgent client (Fetch)** — Both Docker images install **Python 3**, **`uagents`**, **`uagents-core`**, and **`requests`**, matching the [Node.js Client Integration](https://innovationlab.fetch.ai/resources/docs/examples/integrations/nodejs-client-integration) guide. The frontend image starts **`bridge_agent.py`** in the background when present, then **`node server.js`** (standalone). Compose maps **host `8000` → frontend bridge** and **`8001` → backend bridge** (container port `8000`) for local debugging; omit those port lines if you do not need them.
+
+Override backend path:
+
+```bash
+BACKEND_CONTEXT=/abs/path/to/shotenx_ai_backend docker compose up --build
 ```
 
 ---
 
-## ⚡ Alby Integration
+## Railway
 
-For L402-compatible wallet auth and payments:
+Recommended: **two Railway services** (one from each GitHub repo), or **one monorepo** with two services.
 
-- Alby Sandbox test flow: https://sandbox.albylabs.com/#/simple-payment
-- Alby Builder Skill: https://github.com/getAlby/builder-skill
+1. **Backend service** — root `shotenx_ai_backend`, Dockerfile `Dockerfile`, start `node dist/index.js`, set `PORT` + `ALLOWED_ORIGINS` (your `https://<frontend>.up.railway.app`).  
+2. **Frontend service** — root `ShotenX_AI`, Dockerfile `Dockerfile`, build arg / env **`NEXT_PUBLIC_BACKEND_URL=https://<backend>.up.railway.app`**.
 
-### Environment notes
+Railway can deploy from GitHub without Actions; optional **GitHub Actions** workflows:
 
-- `ALBY_NWC_URL` stores your Nostr Wallet Connect URL (server-side only)
-- `WITHDRAWAL_DESTINATION` should be your Lightning address/LNURL/Bolt12
-- MoneyDevKit webhook endpoint is your app route: `/api/mdk`
+- `/.github/workflows/ci.yml` — lint + build on every PR.  
+- `/.github/workflows/deploy-railway.yml` — **manual** `workflow_dispatch` + `RAILWAY_TOKEN` if you prefer CLI deploy.
 
-### Auth model in this app
-
-1. Client sends a chat request
-2. Server-side route uses `uagent-client` + `AGENTVERSE_TOKEN`
-3. Paid mode uses L402 challenge-response
-4. Invoice payment unlocks premium response
+Add the same pattern in the backend repo for its own CI.
 
 ---
 
-## 🚀 Future Vision
+## CI (GitHub Actions)
 
-ShotenX_AI aims to build:
+| Workflow | When |
+|----------|------|
+| `ci.yml` | Push / PR to `main` or `master` |
 
-* 🌐 Fully autonomous agent economy
-* 🤝 Agent-to-agent marketplaces
-* 💰 Self-earning AI systems
-* 🔗 Cross-platform agent interoperability
-* ⚡ Instant global micropayments
+Frontend CI sets placeholder Supabase env vars so `next build` can prerender. Replace with real project values for production builds if needed.
 
 ---
 
-## 📄 Routes Overview
+## Scripts
 
-| Route | Access | Description |
-|---|---|---|
-| `/` | Public | Landing page |
-| `/login` | Public | Sign in / Sign up |
-| `/docs` | Public | API documentation |
-| `/marketplace` | Protected | Browse available agents |
-| `/dashboard` | Protected | Overview + analytics |
-| `/transactions` | Protected | Payment history |
-| `/demo` | Protected | Live L402 payment demo |
-| `/register` | Protected | Register your API |
-| `/help` | Protected | Help center + FAQs |
-| `/agent/[address]` | Public | Agent detail pages |
-| `/alby` | Public | Alby integration demo |
-| `/chat-pay` | Protected | Chat payment interface |
-| `/checkout/[id]` | Protected | Payment checkout |
-| `/checkout/success` | Protected | Payment success |
+| Command | Where |
+|---------|--------|
+| `npm run dev` | Both |
+| `npm run build` / `npm start` | Frontend |
+| `npm run build` / `npm start` | Backend (`node dist/index.js`) |
 
 ---
 
-## 🤝 Contributing
+## License
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-<p align="center">Made with ❤️ for the autonomous agent economy</p>
-
-
+Private / team use unless stated otherwise.

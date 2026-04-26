@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Bell, BookOpen, Moon, Sun } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Bell, BookOpen, Moon, Sun } from "lucide-react";
 import { useTheme } from "./theme-provider";
 
 interface Props {
@@ -10,62 +11,57 @@ interface Props {
 
 export function Topbar({ user }: Props) {
   const { theme, toggle } = useTheme();
+  const pathname = usePathname();
 
   const initials = user.name
-    ? user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
     : user.email.slice(0, 2).toUpperCase();
 
   const displayName = user.name || user.email;
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-5">
-      {/* Search */}
-      <div className="flex items-center gap-2 border border-border bg-muted/50 px-3 h-8 w-64">
-        <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <input
-          placeholder="Search"
-          className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-        />
-        <kbd className="hidden border border-border bg-muted px-1.5 text-[10px] text-muted-foreground sm:block">/</kbd>
-      </div>
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#1a1a1a] bg-[#0a0a0a] px-4 font-mono text-[11px]">
+      <nav className="min-w-0 flex-1 truncate font-mono text-[11px] uppercase tracking-widest text-[#888888]">
+        <span className="text-[#444444]">~</span>{" "}
+        <span className="text-[#ffffff]">{pathname || "/"}</span>
+      </nav>
 
-      {/* Right */}
-      <div className="flex items-center gap-1.5">
-
-        {/* Docs */}
-        <Link href="/docs"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-          <BookOpen className="h-3.5 w-3.5" /> Docs
+      <div className="flex items-center gap-1">
+        <Link
+          href="/docs"
+          className="hidden items-center gap-1 px-2 py-1.5 text-[#555555] transition-colors hover:bg-[#111111] hover:text-[#ffffff] sm:flex"
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          <span className="uppercase tracking-widest">Docs</span>
         </Link>
 
-        {/* Help */}
-        <Link href="/help"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-          Help
-        </Link>
-
-        {/* Bell */}
-        <button className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center text-[#555555] transition-colors hover:bg-[#111111] hover:text-[#ffffff]"
+          aria-label="Notifications"
+        >
           <Bell className="h-4 w-4" />
         </button>
 
-        {/* Theme toggle */}
         <button
+          type="button"
           onClick={toggle}
-          className="flex h-8 w-8 items-center justify-center border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex h-8 w-8 items-center justify-center border border-[#333333] text-[#888888] transition-colors hover:border-white hover:text-white"
           aria-label="Toggle theme"
         >
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
 
-        {/* User pill */}
-        <div className="flex items-center gap-2 border border-border bg-muted/40 pl-1 pr-3 h-8 ml-1">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-violet-600 text-[10px] font-bold text-white">
+        <div className="ml-1 flex items-center gap-2 border border-[#222222] bg-[#111111] pl-1 pr-2">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center border border-[#333333] bg-[#000000] text-[10px] font-bold text-[#ffffff]">
             {initials}
           </div>
-          <span className="max-w-[140px] truncate text-xs font-medium text-foreground">
-            {displayName}
-          </span>
+          <span className="max-w-[120px] truncate text-[11px] text-[#aaaaaa]">{displayName}</span>
         </div>
       </div>
     </header>

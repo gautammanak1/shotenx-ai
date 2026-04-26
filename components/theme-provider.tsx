@@ -7,15 +7,21 @@ import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 type Theme = "light" | "dark";
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({ theme: "light", toggle: () => {} });
 
+function applyThemeClass(next: Theme) {
+  const root = document.documentElement;
+  root.classList.remove("light", "dark");
+  root.classList.add(next === "dark" ? "dark" : "light");
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>("dark");
   const [ready, setReady] = useState(false);
 
   useLayoutEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
-    const resolved = stored ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const resolved = stored ?? "dark";
     setTheme(resolved);
-    document.documentElement.classList.toggle("dark", resolved === "dark");
+    applyThemeClass(resolved);
     setReady(true);
   }, []);
 
@@ -23,7 +29,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
     localStorage.setItem("theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+    applyThemeClass(next);
   };
 
   return (

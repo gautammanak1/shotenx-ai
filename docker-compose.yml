@@ -1,0 +1,60 @@
+# Repos as siblings:  parent/ShotenX_AI  +  parent/shotenx_ai_backend
+# Compose reads ./.env (this folder) only for ${VAR} substitution into the frontend service.
+# Backend loads ../shotenx_ai_backend/.env inside the container.
+#
+#   cd ShotenX_AI && docker compose up --build
+#
+# Inside Docker, Next must reach the API at http://backend:8080 (not localhost).
+
+services:
+  backend:
+    build:
+      context: ${BACKEND_CONTEXT:-../shotenx_ai_backend}
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8001:8000"
+    env_file:
+      - ${BACKEND_CONTEXT:-../shotenx_ai_backend}/.env
+    environment:
+      PORT: "8080"
+    volumes:
+      - shotenx_backend_data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:8080/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BACKEND_URL: "http://backend:8080"
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      # Optional: uAgent Python bridge (see Dockerfile / Fetch uAgent client docs)
+      - "8000:8000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_BACKEND_URL: "http://backend:8080"
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      ASI_ONE_API_KEY: ${ASI_ONE_API_KEY}
+      AGENTVERSE_TOKEN: ${AGENTVERSE_TOKEN}
+
+volumes:
+  shotenx_backend_data:

@@ -1,0 +1,47 @@
+---
+description: ShotenX core project context and global rules (frontend)
+alwaysApply: true
+---
+
+# Project: ShotenX AI · Lightning Agent Economy (Frontend)
+
+This is the Next.js 16 (App Router, Turbopack) frontend for an AI agent
+marketplace with L402 Lightning payments. The Express backend lives in a
+sibling repo at `/Users/engineer/shotenx_ai_backend` (port 8080).
+
+## Architecture (do not break)
+
+- Most backend calls go through `lib/api.ts` using the `/backend/*` rewrite
+  (`proxy.ts`). NEVER call the backend host directly from client code.
+- Exception: `api.queryPaidAgent` must call **same-origin**
+  `POST /api/premium/agent-query` (Next `app/api/premium/agent-query/route.ts`).
+  That route issues invoices via the backend and runs Agentverse via
+  `POST /api/agent-chat` on this app — Express does not implement
+  `/api/premium/agent-query`, so proxying it would 404.
+- Auto-router L402 flow: `app/agent-chat/page.tsx` →
+  `api.autoRunSmartAgentWithPayment` → `POST /api/smart-auto-run` → backend
+  `POST /api/agents/auto-run`.
+- Agentverse paid chat: `PaidAgentConversation` / `app/agent/[agentAddress]` →
+  `api.queryPaidAgent` → `app/api/premium/agent-query` (pay) → `app/api/agent-chat`
+  (uagent-client query after proof).
+- Live Lightning payment ledger: `app/(dashboard)/transactions/page.tsx` merges
+  `api.getPaymentLogs()` (Node backend) with `public.transactions` in Supabase
+  (`lib/user-ledger.ts`). Apply `supabase/migrations/20260426120000_services_and_transactions.sql`
+  in the Supabase SQL Editor so RLS-backed `services` + `transactions` work.
+
+## Global rules
+
+- NEVER break existing routes, payment timelines, or the wallet badge.
+- ALWAYS extend `lib/api.ts` (don't ad-hoc fetch backend endpoints).
+- Use Tailwind utility classes; the project already has dark mode.
+- Use functional React components and hooks only.
+- Inputs validated client-side AND server-side (server is source of truth).
+- Wrap async UI calls and surface errors via `useToast` from
+  `components/theme-provider.tsx`.
+
+## Forbidden
+
+- No hardcoded backend hosts (`http://localhost:8080`, etc.) outside `.env`.
+- No Composio code paths (removed from this project).
+- No mocked transaction/agent data in dashboards — use live backend feeds.
+- No `console.log` left in committed UI code.

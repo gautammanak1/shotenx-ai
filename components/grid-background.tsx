@@ -19,9 +19,9 @@ export function GridBackground() {
     const DRAW_DURATION = 1800;
 
     const isDark = theme === "dark";
-    const lineColor  = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-    const pulseColor = isDark ? "rgba(59,130,246,0.18)"  : "rgba(37,99,235,0.12)";
-    const glowColor  = isDark ? "rgba(59,130,246,0.08)"  : "rgba(37,99,235,0.05)";
+    const lineColor = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
+    const pulseColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+    const glowColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)";
 
     type PulseCell = { col: number; row: number; born: number; dur: number };
     const pulses: PulseCell[] = [];
@@ -93,7 +93,7 @@ export function GridBackground() {
         if (age > p.dur) { pulses.splice(i, 1); continue; }
         const t = age / p.dur;
         const alpha = t < 0.5 ? t * 2 : (1 - t) * 2;
-        ctx!.fillStyle = pulseColor.replace(/[\d.]+\)$/, `${alpha * (isDark ? 0.18 : 0.12)})`);
+        ctx!.fillStyle = pulseColor.replace(/[\d.]+\)$/, `${alpha * (isDark ? 0.12 : 0.1)})`);
         ctx!.fillRect(p.col * CELL + 1, p.row * CELL + 1, CELL - 1, CELL - 1);
         ctx!.beginPath();
         ctx!.arc(p.col * CELL, p.row * CELL, 2.5, 0, Math.PI * 2);

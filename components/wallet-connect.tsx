@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { ensureBitcoinConnectInit } from "@/lib/bitcoin-connect-init";
 
 export function WalletConnect() {
   const [connected, setConnected] = useState(false);
   const [ready, setReady] = useState(false);
   const [balanceSats, setBalanceSats] = useState<number | null>(null);
+  const [backendMode, setBackendMode] = useState<"test" | "alby-nwc" | null>(null);
+  const [backendBalance, setBackendBalance] = useState<number | null>(null);
   const [launch, setLaunch] = useState<null | (() => void)>(null);
   const [disconnectWallet, setDisconnectWallet] = useState<null | (() => void)>(null);
 
@@ -14,12 +18,7 @@ export function WalletConnect() {
     let offDisconnected: (() => void) | undefined;
 
     const boot = async () => {
-      const mod = await import("@getalby/bitcoin-connect");
-      mod.init({
-        appName: "ShotenX AI",
-        showBalance: true,
-        filters: ["nwc"]
-      });
+      const mod = await ensureBitcoinConnectInit();
       offConnected = mod.onConnected(async (provider) => {
         setConnected(true);
         try {
@@ -45,6 +44,22 @@ export function WalletConnect() {
     };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    const refresh = async () => {
+      const info = await api.getWalletInfo();
+      if (!alive) return;
+      setBackendMode(info.mode);
+      setBackendBalance(info.balanceSats);
+    };
+    void refresh();
+    const id = setInterval(() => void refresh(), 15000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+
   const handleClick = () => {
     if (!ready) return;
     if (connected && disconnectWallet) {
@@ -54,8 +69,15 @@ export function WalletConnect() {
     launch?.();
   };
 
+  const modeBadge =
+    backendMode === "test"
+      ? { label: "Test Mode", className: "border-yellow-400/40 bg-yellow-500/10 text-yellow-600" }
+      : backendMode === "alby-nwc"
+      ? { label: "Live Sats", className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-600" }
+      : null;
+
   return (
-    <div className="inline-flex items-center gap-2">
+    <div className="inline-flex flex-wrap items-center gap-2">
       <button
         onClick={handleClick}
         disabled={!ready}
@@ -66,6 +88,21 @@ export function WalletConnect() {
       {connected && balanceSats !== null && (
         <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
           {balanceSats} sats
+        </span>
+      )}
+      {modeBadge && (
+        <span
+          title={
+            backendMode === "test"
+              ? "Backend wallet is in test mode (mock invoices, real L402 verification)."
+              : "Backend wallet is connected to real Lightning via Alby NWC."
+          }
+          className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${modeBadge.className}`}
+        >
+          {modeBadge.label}
+          {backendBalance !== null && backendMode === "test" && (
+            <span className="ml-1 font-mono opacity-80">· {backendBalance}s</span>
+          )}
         </span>
       )}
     </div>

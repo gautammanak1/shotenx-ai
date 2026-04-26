@@ -47,6 +47,8 @@ export interface BuilderAgent {
   name: string;
   description: string;
   type: "content" | "image" | "code";
+  /** Backend-only preset for specialized templates (tech daily, ASI1 image). */
+  preset?: "tech-daily" | "asi1-image";
   price: number;
   endpoint: string;
   createdBy: string;
@@ -60,7 +62,7 @@ export interface AutoAgentRunResponse {
   mode: "auto-agent";
   selectedAgent: BuilderAgent;
   payment: { checkoutId: string; amountSats: number; status: string };
-  result: { text?: string; summary?: string; imageUrl?: string; mode?: string };
+  result: { text?: string; summary?: string; imageUrl?: string; imageDataUrl?: string; review?: string; mode?: string };
 }
 
 export interface PaymentLog {
@@ -124,6 +126,37 @@ async function postRaw(path: string, body?: unknown, headers?: Record<string, st
   return { status: res.status, ok: res.ok, payload };
 }
 
+/** Next.js App Router only — do not prefix `/backend` (Express has no this route). */
+async function postRawSameOrigin(path: string, body?: unknown, headers?: Record<string, string>) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const contentType = res.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json") ? await res.json().catch(() => ({})) : {};
+  return { status: res.status, ok: res.ok, payload };
+}
+
+async function postToolL402Raw(
+  toolPath: "/summarize" | "/code-review",
+  params: {
+    prompt: string;
+    buyerId?: string;
+    authorization?: string;
+    xPaymentToken?: string;
+  }
+) {
+  const headers: Record<string, string> = {};
+  if (params.authorization) headers.Authorization = params.authorization;
+  if (params.xPaymentToken) headers["x-payment-token"] = params.xPaymentToken;
+  return postRaw(
+    `/api/tools${toolPath}`,
+    { prompt: params.prompt, buyerId: params.buyerId ?? "demo-user" },
+    Object.keys(headers).length ? headers : undefined
+  );
+}
+
 export const api = {
   async searchAgents(params: {
     query?: string;
@@ -161,22 +194,25 @@ export const api = {
     message: string;
     userId: string;
     authorization?: string;
-    autoPay?: boolean;
   }) {
-    const endpoint = params.autoPay ? "/api/premium/agent-query-auto" : "/api/premium/agent-query";
-    return postRaw(endpoint, {
-      agentAddress: params.agentAddress,
-      message: params.message,
-      userId: params.userId,
-    }, params.authorization ? { Authorization: params.authorization } : undefined);
-  },
-
-  async queryAgentDirect(params: { agentAddress: string; message: string; userSeed: string }) {
-    return postRaw("/api/agents/direct-chat", params);
+    return postRawSameOrigin(
+      "/api/premium/agent-query",
+      {
+        agentAddress: params.agentAddress,
+        message: params.message,
+        userId: params.userId,
+      },
+      params.authorization ? { Authorization: params.authorization } : undefined
+    );
   },
 
   async suggestAgentsByPrompt(query: string): Promise<LlmAgentSuggestion[]> {
-    const payload = await postJson<{ suggestions?: LlmAgentSuggestion[] }>("/api/agents/llm-search", { query });
+    const res = await post("/api/agents/llm-search", { query });
+    const contentType = res.headers.get("content-type") ?? "";
+    const payload = contentType.includes("application/json")
+      ? ((await res.json().catch(() => ({}))) as { suggestions?: LlmAgentSuggestion[] })
+      : {};
+    if (!res.ok) return [];
     return (payload.suggestions ?? []).slice(0, 6);
   },
 
@@ -214,13 +250,21 @@ export const api = {
     preimage?: string;
     agentId?: string;
   }) {
-    return postRaw("/api/agents/auto-run", {
-      prompt: params.prompt,
-      buyerId: params.buyerId ?? "web-auto-user",
-      checkoutId: params.checkoutId,
-      preimage: params.preimage,
-      agentId: params.agentId,
+    /** Same-origin: ASI1 prompt guard + proxy to backend (no secrets in browser). */
+    const res = await fetch("/api/smart-auto-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: params.prompt,
+        buyerId: params.buyerId ?? "web-auto-user",
+        checkoutId: params.checkoutId,
+        preimage: params.preimage,
+        agentId: params.agentId,
+      }),
     });
+    const contentType = res.headers.get("content-type") ?? "";
+    const payload = contentType.includes("application/json") ? await res.json().catch(() => ({})) : {};
+    return { status: res.status, ok: res.ok, payload };
   },
 
   async getPaymentLogs(limit = 50): Promise<PaymentLog[]> {
@@ -238,9 +282,34 @@ export const api = {
     return payload.checkout;
   },
 
+  async summarizeWithL402(params: {
+    prompt: string;
+    buyerId?: string;
+    authorization?: string;
+    xPaymentToken?: string;
+  }) {
+    return postToolL402Raw("/summarize", params);
+  },
+
+  async postToolL402(
+    toolPath: "/summarize" | "/code-review",
+    params: {
+      prompt: string;
+      buyerId?: string;
+      authorization?: string;
+      xPaymentToken?: string;
+    }
+  ) {
+    return postToolL402Raw(toolPath, params);
+  },
+
+  /** @deprecated Use summarizeWithL402 */
   async runPaidSummary(prompt: string, checkoutId?: string) {
-    const res = await post("/api/tools/summarize", { prompt },
-      checkoutId ? { "x-payment-token": checkoutId } : undefined);
+    const res = await post(
+      "/api/tools/summarize",
+      { prompt, buyerId: "legacy-demo-user" },
+      checkoutId ? { "x-payment-token": checkoutId } : undefined
+    );
     const payload = (await res.json()) as Record<string, unknown>;
     if (res.status === 402) {
       const l402 = (payload.l402 ?? {}) as { checkoutId?: string };

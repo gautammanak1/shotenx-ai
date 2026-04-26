@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { ensureBitcoinConnectInit } from "@/lib/bitcoin-connect-init";
 
 type L402Challenge = {
   l402?: {
@@ -74,8 +75,8 @@ export function useL402Request() {
           amountSats
         });
 
-        const { requestProvider } = await import("@getalby/bitcoin-connect");
-        const provider = await requestProvider();
+        const mod = await ensureBitcoinConnectInit();
+        const provider = await mod.requestProvider();
         const payment = (await provider.sendPayment(invoice)) as Record<string, unknown>;
         const preimageCandidate = [
           payment.preimage,

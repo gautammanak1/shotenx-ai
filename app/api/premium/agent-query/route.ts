@@ -98,12 +98,13 @@ const getBackendBase = () => {
 };
 
 export const POST = async (req: Request) => {
-  let payload: { agentAddress?: string; message?: string; userId?: string };
+  let payload: { agentAddress?: string; message?: string; userId?: string; agentverseToken?: string };
   try {
     payload = (await req.json()) as {
       agentAddress?: string;
       message?: string;
       userId?: string;
+      agentverseToken?: string;
     };
   } catch {
     return Response.json({ error: "invalid_json" }, { status: 400 });
@@ -209,17 +210,22 @@ export const POST = async (req: Request) => {
   }
 
   try {
-    const directChatEndpoint = new URL("/api/agent-chat", req.url).toString();
-    const directResponse = await fetch(directChatEndpoint, {
+    /** After Alby macaroon verify, run Agentverse on the Node backend only (one uagent bridge + AGENTVERSE_API_KEY). Next `/api/agent-chat` duplicated the client and often failed with publish / AggregateError. */
+    const backendUrl = `${getBackendBase().replace(/\/$/, "")}/api/agents/direct-chat`;
+    const internalSecret = process.env.SHOTENX_DIRECT_CHAT_INTERNAL_SECRET?.trim();
+    const directHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (internalSecret) {
+      directHeaders["x-shotenx-direct-chat-internal"] = internalSecret;
+    }
+    const directResponse = await fetch(backendUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: directHeaders,
       body: JSON.stringify({
         agentAddress,
         message,
-        userSeed
-      })
+        userSeed,
+        agentverseToken: payload.agentverseToken?.trim() || undefined,
+      }),
     });
 
     const directPayload = (await directResponse.json()) as Record<string, unknown>;
@@ -227,9 +233,13 @@ export const POST = async (req: Request) => {
       return Response.json(
         {
           error: toErrorMessage(
-            directPayload.error,
+            directPayload.error ?? directPayload.response,
             "agent_query_failed"
-          )
+          ),
+          detail:
+            typeof directPayload.error === "string"
+              ? directPayload.error
+              : `agent_chat_status_${directResponse.status}`,
         },
         { status: 502 }
       );

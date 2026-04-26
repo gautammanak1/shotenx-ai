@@ -54,11 +54,6 @@ export const autoPayInvoiceWithAgentWallet = async (invoice: string) => {
     env: process.env
   });
 
-  if (stderr?.trim()) {
-    // keep non-fatal stderr visible in logs without failing by itself
-    console.warn("agent-wallet stderr:", stderr.trim());
-  }
-
   const payload = parseJson(stdout);
   const preimage = pickPreimage(payload);
 

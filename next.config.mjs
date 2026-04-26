@@ -7,6 +7,7 @@ const currentDir = path.dirname(currentFile);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   serverExternalPackages: ["uagent-client"],
   turbopack: { root: currentDir },
   async rewrites() {
