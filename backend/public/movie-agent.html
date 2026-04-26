@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Movie Agent UI</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+      .container { max-width: 950px; margin: 0 auto; padding: 20px; }
+      .links a { color: #93c5fd; text-decoration: none; margin-right: 14px; }
+      textarea { width: 100%; min-height: 180px; border: 1px solid #334155; background: #111827; color: #e2e8f0; border-radius: 8px; padding: 10px; box-sizing: border-box; }
+      button { margin-top: 12px; background: #22c55e; border: 0; color: #052e16; font-weight: 700; padding: 9px 13px; border-radius: 8px; cursor: pointer; }
+      .alt { background: #334155; color: #e2e8f0; margin-left: 8px; }
+      .warn { background: #f59e0b; color: #111827; margin-left: 8px; }
+      .panel { margin-top: 14px; background: #111827; border: 1px solid #334155; border-radius: 8px; padding: 12px; }
+      .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 10px; font-size: 14px; }
+      .k { color: #94a3b8; }
+      pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+      .ok { color: #86efac; }
+      .error { color: #fca5a5; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Movie Agent</h1>
+      <div class="links">
+        <a href="/agents">Integration Hub</a>
+        <a href="/resume-agent">Resume Agent</a>
+      </div>
+      <p>Ask your movie question, review the response, then create AP2 payment draft in the same flow.</p>
+
+      <textarea id="prompt" placeholder="Suggest 5 sci-fi movies like Interstellar and why."></textarea>
+      <button id="runBtn">Ask Movie Agent</button>
+      <button id="demoBtn" class="alt" type="button">Load Demo</button>
+      <button id="payBtn" class="warn" type="button">Proceed to Payment</button>
+      <span id="status"></span>
+
+      <div class="panel">
+        <h3>Response JSON</h3>
+        <pre id="response">No response yet.</pre>
+      </div>
+      <div class="panel">
+        <h3>Flow Status</h3>
+        <pre id="flowStatus">movie_completed: false
+payment_draft_created: false
+payment_ready_for_signing: false</pre>
+      </div>
+      <div class="panel">
+        <h3>AP2 Payment Card</h3>
+        <div id="ap2CardView">No AP2 payment draft yet. Click "Proceed to Payment".</div>
+      </div>
+      <div class="panel">
+        <h3>Payment Draft Response (A2A)</h3>
+        <pre id="paymentResponse">No payment response yet.</pre>
+      </div>
+    </div>
+
+    <script>
+      const A2A_BASE = "http://localhost:41242";
+      const promptEl = document.getElementById("prompt");
+      const runBtn = document.getElementById("runBtn");
+      const demoBtn = document.getElementById("demoBtn");
+      const payBtn = document.getElementById("payBtn");
+      const statusEl = document.getElementById("status");
+      const responseEl = document.getElementById("response");
+      const flowStatusEl = document.getElementById("flowStatus");
+      const ap2CardView = document.getElementById("ap2CardView");
+      const paymentResponseEl = document.getElementById("paymentResponse");
+      let lastMoviePayload = null;
+
+      function setStatus(msg, error) {
+        statusEl.textContent = ` ${msg}`;
+        statusEl.className = error ? "error" : "ok";
+      }
+      function updateFlowStatus(movieCompleted, draftCreated, readyForSigning) {
+        flowStatusEl.textContent = `movie_completed: ${movieCompleted}\npayment_draft_created: ${draftCreated}\npayment_ready_for_signing: ${readyForSigning}`;
+      }
+
+      demoBtn.addEventListener("click", () => {
+        promptEl.value = "Recommend 3 motivational sports movies and why each is worth watching.";
+      });
+
+      runBtn.addEventListener("click", async () => {
+        const query = promptEl.value.trim();
+        if (!query) {
+          setStatus("Please enter a movie question.", true);
+          return;
+        }
+        setStatus("Requesting movie response...", false);
+        runBtn.disabled = true;
+        try {
+          const response = await fetch("http://localhost:3000/api/movie", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
+          });
+          const data = await response.json().catch(() => ({}));
+          responseEl.textContent = JSON.stringify(data, null, 2);
+          lastMoviePayload = response.ok ? data : null;
+          updateFlowStatus(!!lastMoviePayload, false, false);
+          setStatus(response.ok ? "Completed." : `Failed (${response.status}).`, !response.ok);
+        } catch (error) {
+          responseEl.textContent = String(error);
+          lastMoviePayload = null;
+          updateFlowStatus(false, false, false);
+          setStatus("Movie API not reachable.", true);
+        } finally {
+          runBtn.disabled = false;
+        }
+      });
+
+      payBtn.addEventListener("click", async () => {
+        if (!lastMoviePayload) {
+          setStatus("Run Movie Agent first, then proceed to payment.", true);
+          return;
+        }
+        setStatus("Creating payment draft...", false);
+        payBtn.disabled = true;
+        const recommendations = Array.isArray(lastMoviePayload.recommendations)
+          ? lastMoviePayload.recommendations
+          : [];
+        const chosen = recommendations[0] || { title: "Movie bundle", year: "" };
+        const amount = "9.99";
+        const prompt = `Authorize payment of $${amount} for ${chosen.title}${chosen.year ? ` (${chosen.year})` : ""} movie recommendation package at merchant movie_store_demo.`;
+        const payload = {
+          jsonrpc: "2.0",
+          id: `movie-pay-${Date.now()}`,
+          method: "message/send",
+          params: {
+            message: {
+              kind: "message",
+              messageId: `msg-${Date.now()}`,
+              role: "user",
+              parts: [{ kind: "text", text: prompt }]
+            }
+          }
+        };
+
+        try {
+          const response = await fetch(`${A2A_BASE}/a2a/jsonrpc`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json().catch(() => ({}));
+          paymentResponseEl.textContent = JSON.stringify(data, null, 2);
+          if (!response.ok || data.error) {
+            updateFlowStatus(true, false, false);
+            setStatus(`Payment draft failed (${response.status}).`, true);
+            return;
+          }
+          const parsed = renderAp2CardFromResponse(data);
+          updateFlowStatus(true, !!parsed, !!parsed);
+          setStatus(parsed ? "Payment draft ready." : "Payment response received (could not parse card).", !parsed);
+        } catch (error) {
+          updateFlowStatus(true, false, false);
+          paymentResponseEl.textContent = String(error);
+          setStatus("Could not reach A2A payment service.", true);
+        } finally {
+          payBtn.disabled = false;
+        }
+      });
+
+      function findAgentText(payload) {
+        const messageTextFromParts = (parts) => {
+          if (!Array.isArray(parts)) return "";
+          return parts.map((p) => (p && p.kind === "text" ? String(p.text || "") : "")).join("\n").trim();
+        };
+        if (payload?.result?.parts) {
+          const t = messageTextFromParts(payload.result.parts);
+          if (t) return t;
+        }
+        if (payload?.result?.status?.message?.parts) {
+          const t = messageTextFromParts(payload.result.status.message.parts);
+          if (t) return t;
+        }
+        return "";
+      }
+
+      function parseBundleFromText(text) {
+        if (!text) return null;
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start === -1 || end === -1 || end <= start) return null;
+        try {
+          return JSON.parse(text.slice(start, end + 1));
+        } catch {
+          return null;
+        }
+      }
+
+      function renderAp2CardFromResponse(payload) {
+        const text = findAgentText(payload);
+        const bundle = parseBundleFromText(text);
+        if (!bundle || !bundle.intent_mandate || !bundle.payment_mandate) {
+          ap2CardView.textContent = "Could not parse AP2 payment draft from response.";
+          return false;
+        }
+        const intent = bundle.intent_mandate;
+        const payment = bundle.payment_mandate;
+        const amt = intent.amount_max ? `${intent.amount_max.value} ${intent.amount_max.currency}` : "Not set";
+        const steps = Array.isArray(bundle.next_steps) ? bundle.next_steps : [];
+        ap2CardView.innerHTML = `
+          <div class="kv">
+            <div class="k">Intent ID</div><div>${intent.id || "-"}</div>
+            <div class="k">Payment ID</div><div>${payment.id || "-"}</div>
+            <div class="k">Amount Max</div><div>${amt}</div>
+            <div class="k">Merchant</div><div>${intent.merchant_id || "Not provided"}</div>
+            <div class="k">Rail</div><div>${payment.rail || "-"}</div>
+            <div class="k">Status</div><div>${payment.status || "-"}</div>
+            <div class="k">Expires At</div><div>${intent.expires_at || "-"}</div>
+          </div>
+          <hr style="border-color:#334155; margin:10px 0;" />
+          <div class="k">Next Steps</div>
+          <pre>${steps.length ? steps.map((s) => `- ${s}`).join("\n") : "No steps found."}</pre>
+        `;
+        return true;
+      }
+    </script>
+  </body>
+</html>

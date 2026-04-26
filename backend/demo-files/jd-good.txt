@@ -1,0 +1,14 @@
+Role: Backend Engineer (AI Integrations)
+Company: Acme Talent Systems
+Location: Hybrid - Bengaluru
+
+Requirements:
+- 2+ years backend development experience in Node.js and TypeScript
+- Strong API design and error-handling fundamentals
+- Experience integrating LLM APIs and structured outputs
+- Clear communication and ownership mindset
+
+Responsibilities:
+- Build backend services for AI-assisted hiring workflows
+- Improve reliability and latency of model-backed endpoints
+- Collaborate with product and frontend teams

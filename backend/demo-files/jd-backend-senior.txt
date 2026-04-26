@@ -1,0 +1,12 @@
+Role: Senior Backend Engineer (Platform)
+Company: ScaleForge
+
+Must-have:
+- 6+ years Node.js backend development
+- Strong TypeScript, distributed systems, and API security
+- Experience with caching, queues, and observability stacks
+- CI/CD ownership and incident response experience
+
+Nice-to-have:
+- LLM integration experience
+- Performance optimization at high traffic

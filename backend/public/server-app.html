@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShotenX server UI</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        color: #e8eaed;
+        background: #0f1115;
+      }
+      body {
+        max-width: 720px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-size: 0.85rem;
+        color: #9aa0a6;
+      }
+      input,
+      textarea,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 0.35rem;
+        padding: 0.5rem 0.6rem;
+        border-radius: 8px;
+        border: 1px solid #30343c;
+        background: #1a1d24;
+        color: #e8eaed;
+      }
+      textarea {
+        min-height: 88px;
+        resize: vertical;
+      }
+      button {
+        margin-top: 1rem;
+        cursor: pointer;
+        font-weight: 600;
+        background: #3b5bdb;
+        border-color: #3b5bdb;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      pre {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #16181e;
+        border-radius: 8px;
+        overflow: auto;
+        font-size: 0.8rem;
+        border: 1px solid #30343c;
+      }
+      .hint {
+        font-size: 0.8rem;
+        color: #9aa0a6;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ShotenX backend — server-side smoke test</h1>
+    <p class="hint">
+      Calls this origin’s <code>/api/agents/llm-search</code> and <code>/api/premium/agent-query</code>. Premium returns
+      <code>402</code> until you pay the invoice and retry with
+      <code>Authorization: L402 &lt;macaroon&gt;:&lt;preimage&gt;</code>.
+    </p>
+
+    <label for="q">LLM search query</label>
+    <input id="q" type="text" value="bitcoin lightning agent" />
+
+    <label for="addr">Agent address (premium)</label>
+    <input id="addr" type="text" placeholder="agent1q..." />
+
+    <label for="msg">Message (premium)</label>
+    <textarea id="msg" placeholder="What can you do?"></textarea>
+
+    <button type="button" id="runLlm">POST /api/agents/llm-search</button>
+    <button type="button" id="runPremium">POST /api/premium/agent-query</button>
+
+    <pre id="out">{}</pre>
+
+    <script>
+      const out = document.getElementById("out");
+      const setOut = (obj) => {
+        out.textContent = JSON.stringify(obj, null, 2);
+      };
+
+      document.getElementById("runLlm").onclick = async () => {
+        const q = document.getElementById("q").value.trim();
+        const btn = document.getElementById("runLlm");
+        btn.disabled = true;
+        try {
+          const r = await fetch("/api/agents/llm-search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: q })
+          });
+          const j = await r.json().catch(() => ({}));
+          setOut({ status: r.status, body: j });
+        } catch (e) {
+          setOut({ error: String(e) });
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      document.getElementById("runPremium").onclick = async () => {
+        const agentAddress = document.getElementById("addr").value.trim();
+        const message = document.getElementById("msg").value.trim();
+        const btn = document.getElementById("runPremium");
+        btn.disabled = true;
+        try {
+          const r = await fetch("/api/premium/agent-query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agentAddress, message, userId: "server-app" })
+          });
+          const j = await r.json().catch(() => ({}));
+          setOut({ status: r.status, body: j });
+        } catch (e) {
+          setOut({ error: String(e) });
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    </script>
+  </body>
+</html>

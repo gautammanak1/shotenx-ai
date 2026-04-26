@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Dashboard</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+      .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+      .tabs { display: flex; gap: 8px; margin: 12px 0 18px; }
+      .tab { background: #1f2937; color: #e2e8f0; border: 1px solid #334155; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+      .tab.active { background: #22c55e; color: #052e16; font-weight: 700; }
+      .view { display: none; }
+      .view.active { display: block; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      textarea { width: 100%; min-height: 220px; border: 1px solid #334155; background: #111827; color: #e2e8f0; border-radius: 8px; padding: 10px; box-sizing: border-box; }
+      button { margin-top: 10px; background: #22c55e; border: 0; color: #052e16; font-weight: 700; padding: 9px 12px; border-radius: 8px; cursor: pointer; }
+      button.alt { background: #334155; color: #e2e8f0; margin-left: 8px; }
+      .panel { margin-top: 14px; background: #111827; border: 1px solid #334155; border-radius: 8px; padding: 12px; }
+      pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+      .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 10px; font-size: 14px; }
+      .k { color: #94a3b8; }
+      .ok { color: #86efac; }
+      .error { color: #fca5a5; }
+      .uploadRow { margin: 6px 0 10px; font-size: 13px; }
+      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Unified Agent Dashboard</h1>
+      <p>Use this page to run Resume Optimizer and A2A Commerce AP2 agent from one place.</p>
+      <div class="tabs">
+        <button class="tab active" data-target="resumeView">Resume Optimizer</button>
+        <button class="tab" data-target="movieView">Movie Agent</button>
+        <button class="tab" data-target="a2aView">A2A Commerce AP2</button>
+      </div>
+
+      <section id="resumeView" class="view active">
+        <div class="grid">
+          <div>
+            <label for="resume">Resume</label>
+            <div class="uploadRow"><input id="resumeFile" type="file" accept=".txt,.md,.json,.pdf,.doc,.docx" /></div>
+            <textarea id="resume" placeholder="Paste resume text"></textarea>
+          </div>
+          <div>
+            <label for="jd">Job Description</label>
+            <div class="uploadRow"><input id="jdFile" type="file" accept=".txt,.md,.json,.pdf,.doc,.docx" /></div>
+            <textarea id="jd" placeholder="Paste JD text"></textarea>
+          </div>
+        </div>
+        <button id="runOptimize">Optimize Application</button>
+        <button id="loadResumeDemo" class="alt" type="button">Load Demo</button>
+        <span id="resumeStatus"></span>
+        <div class="panel"><h3>Resume Agent Activity</h3><pre id="resumeActivity">Waiting for events...</pre></div>
+        <div class="panel"><h3>Resume Agent Response</h3><pre id="resumeResponse">No response yet.</pre></div>
+      </section>
+
+      <section id="movieView" class="view">
+        <label for="moviePrompt">Movie Question</label>
+        <textarea id="moviePrompt" placeholder="Suggest 3 sci-fi movies like Interstellar and why."></textarea>
+        <button id="runMovie">Ask Movie Agent</button>
+        <button id="loadMovieDemo" class="alt" type="button">Load Demo</button>
+        <span id="movieStatus"></span>
+        <div class="panel"><h3>Movie Agent Response</h3><pre id="movieResponse">No response yet.</pre></div>
+      </section>
+
+      <section id="a2aView" class="view">
+        <label for="a2aPrompt">A2A Message</label>
+        <textarea id="a2aPrompt" placeholder="Authorize up to $49.99 for Pro plan at merchant merc_acme."></textarea>
+        <button id="sendA2a">Send to A2A Agent</button>
+        <button id="loadA2aDemo" class="alt" type="button">Load Demo</button>
+        <button id="checkCard" class="alt" type="button">Check A2A Agent Card</button>
+        <span id="a2aStatus"></span>
+        <div class="panel"><h3>A2A Agent Card</h3><pre id="a2aCard">Not fetched yet.</pre></div>
+        <div class="panel">
+          <h3>AP2 Payment Card</h3>
+          <div id="ap2CardView">No AP2 payment draft yet. Send an A2A message first.</div>
+        </div>
+        <div class="panel"><h3>A2A Response</h3><pre id="a2aResponse">No response yet.</pre></div>
+      </section>
+    </div>
+
+    <script>
+      const tabs = document.querySelectorAll(".tab");
+      const views = document.querySelectorAll(".view");
+      tabs.forEach((tab) => tab.addEventListener("click", () => {
+        tabs.forEach((t) => t.classList.remove("active"));
+        views.forEach((v) => v.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.target).classList.add("active");
+      }));
+
+      const resumeActivity = document.getElementById("resumeActivity");
+      const resumeResponse = document.getElementById("resumeResponse");
+      const resumeStatus = document.getElementById("resumeStatus");
+      const RESUME_API_BASE = "http://localhost:3000";
+      const resume = document.getElementById("resume");
+      const jd = document.getElementById("jd");
+      const resumeFile = document.getElementById("resumeFile");
+      const jdFile = document.getElementById("jdFile");
+
+      function setResumeStatus(msg, error) {
+        resumeStatus.textContent = ` ${msg}`;
+        resumeStatus.className = error ? "error" : "ok";
+      }
+      function addResumeActivity(msg, error) {
+        const p = error ? "[ERROR]" : "[INFO]";
+        const line = `${new Date().toLocaleTimeString()} ${p} ${msg}`;
+        const prev = resumeActivity.textContent === "Waiting for events..." ? "" : resumeActivity.textContent;
+        resumeActivity.textContent = `${line}\n${prev}`.trim();
+      }
+      function ext(name) {
+        const i = (name || "").toLowerCase().lastIndexOf(".");
+        return i >= 0 ? name.toLowerCase().slice(i) : "";
+      }
+      async function readUpload(fileInput, target, label) {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        const e = ext(file.name);
+        if ([".pdf", ".docx", ".doc"].includes(e)) {
+          addResumeActivity(`Extracting ${label}: ${file.name}`, false);
+          const fd = new FormData(); fd.append("file", file);
+          const r = await fetch(`${RESUME_API_BASE}/api/extract-text`, { method: "POST", body: fd });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) { addResumeActivity(`Extract failed: ${data.error || r.status}`, true); return; }
+          target.value = data.text || "";
+          addResumeActivity(`Loaded ${label} from ${file.name}`, false);
+          return;
+        }
+        const fr = new FileReader();
+        fr.onload = () => { target.value = String(fr.result || ""); addResumeActivity(`Loaded ${label}: ${file.name}`, false); };
+        fr.onerror = () => addResumeActivity(`Failed reading ${label}: ${file.name}`, true);
+        fr.readAsText(file);
+      }
+      resumeFile.addEventListener("change", () => { void readUpload(resumeFile, resume, "resume"); });
+      jdFile.addEventListener("change", () => { void readUpload(jdFile, jd, "job description"); });
+
+      document.getElementById("loadResumeDemo").addEventListener("click", () => {
+        resume.value = "Backend engineer with Node.js, TypeScript, APIs, and production support experience.";
+        jd.value = "Hiring backend engineer for Node.js + TypeScript APIs with LLM integration experience.";
+        addResumeActivity("Loaded demo resume and JD.", false);
+      });
+
+      document.getElementById("runOptimize").addEventListener("click", async () => {
+        const rText = resume.value.trim();
+        const jText = jd.value.trim();
+        if (!rText || !jText) { setResumeStatus("Please fill both fields.", true); return; }
+        setResumeStatus("Running optimization...", false);
+        resumeResponse.textContent = "Waiting for response...";
+        const r = await fetch(`${RESUME_API_BASE}/api/optimize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resume: rText, job_description: jText })
+        });
+        const data = await r.json().catch(() => ({}));
+        resumeResponse.textContent = JSON.stringify(data, null, 2);
+        setResumeStatus(r.ok ? "Completed." : `Failed (${r.status}).`, !r.ok);
+      });
+
+      fetch(`${RESUME_API_BASE}/api/activity`).then((r) => r.json()).then((d) => {
+        if (Array.isArray(d.events) && d.events.length) {
+          resumeActivity.textContent = d.events.slice().reverse().map((e) =>
+            `${new Date(e.timestamp).toLocaleTimeString()} [${String(e.level).toUpperCase()}] ${e.source}: ${e.message}`
+          ).join("\n");
+        }
+      }).catch(() => addResumeActivity("Could not load activity.", true));
+      const stream = new EventSource(`${RESUME_API_BASE}/api/activity/stream`);
+      stream.onmessage = (ev) => {
+        const p = JSON.parse(ev.data);
+        if (p.type === "connected") return;
+        addResumeActivity(`${p.source}: ${p.message}`, p.level === "error");
+      };
+
+      const moviePrompt = document.getElementById("moviePrompt");
+      const movieStatus = document.getElementById("movieStatus");
+      const movieResponse = document.getElementById("movieResponse");
+      function setMovieStatus(msg, error) {
+        movieStatus.textContent = ` ${msg}`;
+        movieStatus.className = error ? "error" : "ok";
+      }
+      document.getElementById("loadMovieDemo").addEventListener("click", () => {
+        moviePrompt.value = "Recommend 3 motivational sports movies and why each is worth watching.";
+      });
+      document.getElementById("runMovie").addEventListener("click", async () => {
+        const query = moviePrompt.value.trim();
+        if (!query) {
+          setMovieStatus("Please enter a movie question.", true);
+          return;
+        }
+        setMovieStatus("Getting movie response...", false);
+        const r = await fetch(`${RESUME_API_BASE}/api/movie`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query })
+        });
+        const data = await r.json().catch(() => ({}));
+        movieResponse.textContent = JSON.stringify(data, null, 2);
+        setMovieStatus(r.ok ? "Completed." : `Failed (${r.status}).`, !r.ok);
+      });
+
+      const A2A_BASE = "http://localhost:41242";
+      const a2aPrompt = document.getElementById("a2aPrompt");
+      const a2aStatus = document.getElementById("a2aStatus");
+      const a2aCard = document.getElementById("a2aCard");
+      const a2aResp = document.getElementById("a2aResponse");
+      const ap2CardView = document.getElementById("ap2CardView");
+      function setA2aStatus(msg, error) {
+        a2aStatus.textContent = ` ${msg}`;
+        a2aStatus.className = error ? "error" : "ok";
+      }
+      document.getElementById("loadA2aDemo").addEventListener("click", () => {
+        a2aPrompt.value = "Authorize up to $49.99 for a monthly Pro plan at merchant merc_acme.";
+      });
+      document.getElementById("checkCard").addEventListener("click", async () => {
+        try {
+          const r = await fetch(`${A2A_BASE}/.well-known/agent-card.json`);
+          const data = await r.json();
+          a2aCard.textContent = JSON.stringify(data, null, 2);
+          setA2aStatus(r.ok ? "Agent card loaded." : `Card check failed (${r.status}).`, !r.ok);
+        } catch (e) {
+          a2aCard.textContent = String(e);
+          setA2aStatus("Could not reach A2A server.", true);
+        }
+      });
+      document.getElementById("sendA2a").addEventListener("click", async () => {
+        const text = a2aPrompt.value.trim();
+        if (!text) { setA2aStatus("Please enter a message.", true); return; }
+        setA2aStatus("Sending A2A request...", false);
+        const payload = {
+          jsonrpc: "2.0",
+          id: `ui-${Date.now()}`,
+          method: "message/send",
+          params: {
+            message: {
+              kind: "message",
+              messageId: `msg-${Date.now()}`,
+              role: "user",
+              parts: [{ kind: "text", text }]
+            }
+          }
+        };
+        try {
+          const r = await fetch(`${A2A_BASE}/a2a/jsonrpc`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await r.json();
+          a2aResp.textContent = JSON.stringify(data, null, 2);
+          renderAp2CardFromResponse(data);
+          setA2aStatus(!r.ok || data.error ? `Failed (${r.status}).` : "A2A response received.", !r.ok || !!data.error);
+        } catch (e) {
+          a2aResp.textContent = String(e);
+          setA2aStatus("Could not call A2A endpoint.", true);
+        }
+      });
+
+      function findAgentText(payload) {
+        const messageTextFromParts = (parts) => {
+          if (!Array.isArray(parts)) return "";
+          return parts.map((p) => (p && p.kind === "text" ? String(p.text || "") : "")).join("\n").trim();
+        };
+        if (payload?.result?.parts) {
+          const t = messageTextFromParts(payload.result.parts);
+          if (t) return t;
+        }
+        if (payload?.result?.status?.message?.parts) {
+          const t = messageTextFromParts(payload.result.status.message.parts);
+          if (t) return t;
+        }
+        return "";
+      }
+
+      function parseBundleFromText(text) {
+        if (!text) return null;
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start === -1 || end === -1 || end <= start) return null;
+        const slice = text.slice(start, end + 1);
+        try {
+          return JSON.parse(slice);
+        } catch {
+          return null;
+        }
+      }
+
+      function renderAp2CardFromResponse(payload) {
+        const text = findAgentText(payload);
+        const bundle = parseBundleFromText(text);
+        if (!bundle || !bundle.intent_mandate || !bundle.payment_mandate) {
+          ap2CardView.textContent = "Could not parse AP2 payment draft from response. Check A2A Response panel.";
+          return;
+        }
+        const intent = bundle.intent_mandate;
+        const payment = bundle.payment_mandate;
+        const amt = intent.amount_max ? `${intent.amount_max.value} ${intent.amount_max.currency}` : "Not set";
+        const steps = Array.isArray(bundle.next_steps) ? bundle.next_steps : [];
+        ap2CardView.innerHTML = `
+          <div class="kv">
+            <div class="k">Intent ID</div><div>${intent.id || "-"}</div>
+            <div class="k">Payment ID</div><div>${payment.id || "-"}</div>
+            <div class="k">Amount Max</div><div>${amt}</div>
+            <div class="k">Merchant</div><div>${intent.merchant_id || "Not provided"}</div>
+            <div class="k">Rail</div><div>${payment.rail || "-"}</div>
+            <div class="k">Status</div><div>${payment.status || "-"}</div>
+            <div class="k">Expires At</div><div>${intent.expires_at || "-"}</div>
+          </div>
+          <hr style="border-color:#334155; margin:10px 0;" />
+          <div class="k">Next Steps</div>
+          <pre>${steps.length ? steps.map((s) => `- ${s}`).join("\n") : "No steps found."}</pre>
+        `;
+      }
+    </script>
+  </body>
+</html>

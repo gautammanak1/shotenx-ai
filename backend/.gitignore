@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+npm-debug.log*
+# Runtime L402 / ratings store (created on first use)
+data/*.json

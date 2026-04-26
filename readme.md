@@ -1,6 +1,18 @@
-# ShotenX AI
+# ShotenX AI (monorepo)
 
-Lightning-native **agent marketplace MVP**: browse agents, pay with **L402 / invoices**, run **builder** and **Agentverse** flows from **Next.js** (`ShotenX_AI`) and **Express** (`shotenx_ai_backend`).
+Lightning-native **agent marketplace MVP**: **Next.js** frontend in `frontend/` and **Express** API in `backend/`. Same-origin UI with **`/backend/*`** proxy, L402 / invoices, builder + Agentverse flows.
+
+---
+
+## Layout
+
+```text
+./
+  frontend/     Next.js 16 app (pages, API routes, Supabase, Bitcoin Connect)
+  backend/      Express API (agents, payments, ASI1 builders)
+  docker-compose.yml
+  render.yaml     optional Render Blueprint (two Web Services)
+```
 
 ---
 
@@ -28,65 +40,6 @@ flowchart LR
   B --> A
 ```
 
-- **Browser** talks only to **Next** (same origin).  
-- **`/backend/*`** is proxied **server-side** to the API base URL (`NEXT_PUBLIC_BACKEND_URL`).  
-- **Premium Agentverse** path: Next `/api/premium/agent-query` → after pay → backend `/api/agents/direct-chat`.
-
----
-
-## Request flow (paid builder run)
-
-```mermaid
-sequenceDiagram
-  participant U as Browser
-  participant N as Next.js
-  participant E as Express API
-  participant L as Lightning / wallet
-  U->>N: POST /api/agents/.../run (via /backend proxy)
-  N->>E: Forward JSON
-  E-->>U: 402 + invoice (L402)
-  U->>L: Pay invoice
-  U->>N: Retry with Authorization L402
-  N->>E: Forward + preimage
-  E-->>U: 200 + agent result
-```
-
----
-
-## Repositories
-
-| Repo | Role |
-|------|------|
-| **ShotenX_AI** (this repo) | Next.js 16 UI, API routes, Supabase auth, Bitcoin Connect |
-| **shotenx_ai_backend** (sibling) | Express, agents registry, payments, ASI1 / OpenAI builders |
-
-Clone both next to each other for Docker Compose paths to work out of the box.
-
----
-
-## Environment variables
-
-### Frontend (`ShotenX_AI/.env`)
-
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `NEXT_PUBLIC_BACKEND_URL` | Yes | Express base URL (browser uses `/backend/*` rewrite from Next). |
-| `NEXT_PUBLIC_SUPABASE_URL` | For auth | Supabase project URL. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For auth | Supabase anon key. |
-
-Optional (see `.env.example`): ASI1 keys on **server** routes, Alby / L402 secrets, Agentverse token, internal relay secret.
-
-### Backend (`shotenx_ai_backend/.env`)
-
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `PORT` | No (default 8080) | Listen port. |
-| `ALLOWED_ORIGINS` | Yes in prod | CSV of browser origins for CORS. |
-| `AGENTVERSE_API_KEY` | For Agentverse | Search + direct chat. |
-| `ASI_ONE_API_KEY` | For ASI1 builders | Chat + image preset agents. |
-
-See each repo’s **`.env.example`** for the full optional set (OpenAI, image models, rate limits, etc.).
-
 ---
 
 ## Local development
@@ -94,16 +47,16 @@ See each repo’s **`.env.example`** for the full optional set (OpenAI, image mo
 **Backend**
 
 ```bash
-cd shotenx_ai_backend
-cp .env.example .env   # fill values
+cd backend
+cp .env.example .env
 npm ci && npm run dev
 ```
 
 **Frontend**
 
 ```bash
-cd ShotenX_AI
-cp .env.example .env   # set NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
+cd frontend
+cp .env.example .env   # NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 npm ci && npm run dev
 ```
 
@@ -111,43 +64,36 @@ npm ci && npm run dev
 
 ## Docker Compose (full stack)
 
-Layout:
-
-```text
-parent/
-  ShotenX_AI/          ← this repo (compose file lives here)
-  shotenx_ai_backend/
-```
-
-From **ShotenX_AI**:
+From **repository root**:
 
 ```bash
-export BACKEND_CONTEXT=../shotenx_ai_backend   # default if repos are siblings
 docker compose up --build
 ```
 
 - **Frontend**: http://localhost:3000  
 - **Backend**: http://localhost:8080  
-- **Persistence**: named volume `shotenx_backend_data` → `/app/data` (payments / ratings files).
+- **Persistence**: volume `shotenx_backend_data` → backend `/app/data`.
 
-**uAgent client (Fetch)** — Both Docker images install **Python 3**, **`uagents`**, **`uagents-core`**, and **`requests`**, matching the [Node.js Client Integration](https://innovationlab.fetch.ai/resources/docs/examples/integrations/nodejs-client-integration) guide. The frontend image starts **`bridge_agent.py`** in the background when present, then **`node server.js`** (standalone). Compose maps **host `8000` → frontend bridge** and **`8001` → backend bridge** (container port `8000`) for local debugging; omit those port lines if you do not need them.
+Compose reads **`.env`** at the repo root for frontend substitution; backend uses **`backend/.env`** (`env_file`).
 
-Override backend path:
+**uAgent (Fetch)** — Docker images include Python + `uagents` / `uagents-core` / `requests` per the [Node.js Client Integration](https://innovationlab.fetch.ai/resources/docs/examples/integrations/nodejs-client-integration) guide. Optional host ports **8000** (frontend bridge) and **8001** → backend bridge.
 
-```bash
-BACKEND_CONTEXT=/abs/path/to/shotenx_ai_backend docker compose up --build
-```
+---
+
+## Environment variables
+
+| Location | Purpose |
+|----------|---------|
+| `frontend/.env` | `NEXT_PUBLIC_*`, server route secrets — see `frontend/.env.example` |
+| `backend/.env` | `PORT`, `ALLOWED_ORIGINS`, Agentverse, ASI1, Alby — see `backend/.env.example` |
 
 ---
 
 ## Render
 
-Recommended: **two Web Services** on [Render](https://render.com) (one repo each), using the root **`Dockerfile`** in each repo.
+Root **`render.yaml`** defines two Docker Web Services (`rootDir: backend` / `rootDir: frontend`). After first deploy, set real URLs: **`NEXT_PUBLIC_BACKEND_URL`** on the frontend service and **`ALLOWED_ORIGINS`** on the backend to your frontend URL.
 
-1. **Backend** (`shotenx_ai_backend`) — New → **Blueprint** (or Web Service → Docker) → connect repo. Root `render.yaml` sets `healthCheckPath: /health`. Set **`ALLOWED_ORIGINS`** to your frontend URL (comma-separated if several). Add keys from `.env.example` (Agentverse, ASI1, Alby, etc.).  
-2. **Frontend** (`ShotenX_AI`) — same flow. Set **`NEXT_PUBLIC_BACKEND_URL`** to the backend’s public `https://…onrender.com` URL (Render passes service env vars as Docker build-args for `NEXT_PUBLIC_*`).
-
-Optional **GitHub Actions**: `/.github/workflows/deploy-render.yml` — manual deploy via **Deploy Hook** only: in Render → your service → **Settings → Deploy Hook**, copy the URL into repo secret **`RENDER_DEPLOY_HOOK_URL`**, then run the workflow (no Railway / Render API token required).
+Optional **GitHub Actions** `/.github/workflows/deploy-render.yml`: add **`RENDER_DEPLOY_HOOK_URL`** (and a second workflow or secret if you use separate hooks per service).
 
 ---
 
@@ -155,10 +101,8 @@ Optional **GitHub Actions**: `/.github/workflows/deploy-render.yml` — manual d
 
 | Workflow | When |
 |----------|------|
-| `ci.yml` | Push / PR to `main` or `master` |
-| `deploy-render.yml` | Manual only; needs `RENDER_DEPLOY_HOOK_URL` |
-
-Frontend CI sets placeholder Supabase env vars so `next build` can prerender. Replace with real project values for production builds if needed.
+| `ci.yml` | Push / PR — jobs **frontend** and **backend** (typecheck + build) |
+| `deploy-render.yml` | Manual; optional deploy hook POST |
 
 ---
 
@@ -166,9 +110,27 @@ Frontend CI sets placeholder Supabase env vars so `next build` can prerender. Re
 
 | Command | Where |
 |---------|--------|
-| `npm run dev` | Both |
-| `npm run build` / `npm start` | Frontend |
-| `npm run build` / `npm start` | Backend (`node dist/index.js`) |
+| `npm run dev` / `build` / `start` | `frontend/` |
+| `npm run dev` / `build` / `start` | `backend/` (`node dist/index.js`) |
+
+---
+
+## New private GitHub repository (monorepo)
+
+GitHub UI: **New repository** → name e.g. `shotenx-ai` → **Private** → create **without** README, then:
+
+```bash
+cd /path/to/this-monorepo
+git remote rename origin old-origin   # optional, if you already had origin
+git remote add origin git@github.com:YOUR_USER/shotenx-ai.git
+git push -u origin main
+```
+
+Or with [GitHub CLI](https://cli.github.com/) after `gh auth login`:
+
+```bash
+gh repo create YOUR_USER/shotenx-ai --private --source=. --remote=origin --push
+```
 
 ---
 

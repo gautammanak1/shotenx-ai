@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A2A Commerce AP2 Agent UI</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      textarea {
+        width: 100%;
+        min-height: 180px;
+        border: 1px solid #334155;
+        background: #111827;
+        color: #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+      .actions {
+        margin-top: 12px;
+      }
+      button {
+        background: #22c55e;
+        border: 0;
+        color: #052e16;
+        font-weight: 700;
+        padding: 9px 13px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-right: 8px;
+      }
+      .secondary {
+        background: #334155;
+        color: #e2e8f0;
+      }
+      .panel {
+        margin-top: 16px;
+        background: #111827;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        gap: 6px 10px;
+        font-size: 14px;
+      }
+      .k {
+        color: #94a3b8;
+      }
+      pre {
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 0;
+      }
+      .ok {
+        color: #86efac;
+      }
+      .error {
+        color: #fca5a5;
+      }
+      a {
+        color: #93c5fd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>A2A Commerce + AP2 Agent</h1>
+      <p>
+        This sends a JSON-RPC request to your A2A agent at
+        <code>http://localhost:41242/a2a/jsonrpc</code>.
+      </p>
+      <p>
+        <a href="/dashboard.html">Open Unified Dashboard</a> |
+        <a href="/">Back to Resume Agent UI</a>
+      </p>
+
+      <label for="prompt">User Message</label>
+      <textarea id="prompt" placeholder="Example: Authorize up to $49.99 for Pro plan at merchant merc_acme."></textarea>
+
+      <div class="actions">
+        <button id="sendBtn">Send to A2A Agent</button>
+        <button id="demoBtn" class="secondary" type="button">Load Demo Prompt</button>
+        <button id="cardBtn" class="secondary" type="button">Check Agent Card</button>
+        <span id="status"></span>
+      </div>
+
+      <div class="panel">
+        <h3>Agent Card</h3>
+        <pre id="cardView">Not fetched yet.</pre>
+      </div>
+
+      <div class="panel">
+        <h3>AP2 Payment Card</h3>
+        <div id="ap2CardView">No AP2 payment draft yet. Send an A2A message first.</div>
+      </div>
+
+      <div class="panel">
+        <h3>A2A Response</h3>
+        <pre id="resultView">No response yet.</pre>
+      </div>
+    </div>
+
+    <script>
+      const A2A_BASE = "http://localhost:41242";
+      const JSON_RPC_URL = `${A2A_BASE}/a2a/jsonrpc`;
+      const CARD_URL = `${A2A_BASE}/.well-known/agent-card.json`;
+
+      const promptEl = document.getElementById("prompt");
+      const sendBtn = document.getElementById("sendBtn");
+      const demoBtn = document.getElementById("demoBtn");
+      const cardBtn = document.getElementById("cardBtn");
+      const statusEl = document.getElementById("status");
+      const cardView = document.getElementById("cardView");
+      const resultView = document.getElementById("resultView");
+      const ap2CardView = document.getElementById("ap2CardView");
+      const params = new URLSearchParams(window.location.search);
+      const prefill = params.get("prefill");
+      const autosend = params.get("autosend") === "1";
+
+      function setStatus(text, isError) {
+        statusEl.textContent = ` ${text}`;
+        statusEl.className = isError ? "error" : "ok";
+      }
+
+      async function fetchAgentCard() {
+        try {
+          const response = await fetch(CARD_URL);
+          const data = await response.json();
+          cardView.textContent = JSON.stringify(data, null, 2);
+          if (!response.ok) {
+            setStatus(`Agent card failed (${response.status})`, true);
+            return;
+          }
+          setStatus("Agent card loaded.", false);
+        } catch (error) {
+          setStatus("Could not reach A2A server.", true);
+          cardView.textContent = String(error);
+        }
+      }
+
+      demoBtn.addEventListener("click", () => {
+        promptEl.value = "Authorize up to $49.99 for a monthly Pro plan at merchant merc_acme.";
+      });
+
+      if (prefill) {
+        promptEl.value = prefill;
+        setStatus("Prefilled from Movie Agent flow.", false);
+      }
+
+      cardBtn.addEventListener("click", () => {
+        void fetchAgentCard();
+      });
+
+      sendBtn.addEventListener("click", async () => {
+        const text = promptEl.value.trim();
+        if (!text) {
+          setStatus("Please enter a message first.", true);
+          return;
+        }
+
+        setStatus("Sending message to A2A agent...", false);
+        sendBtn.disabled = true;
+        resultView.textContent = "Waiting for response...";
+
+        const payload = {
+          jsonrpc: "2.0",
+          id: `ui-${Date.now()}`,
+          method: "message/send",
+          params: {
+            message: {
+              kind: "message",
+              messageId: `msg-${Date.now()}`,
+              role: "user",
+              parts: [{ kind: "text", text }]
+            }
+          }
+        };
+
+        try {
+          const response = await fetch(JSON_RPC_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await response.json();
+          resultView.textContent = JSON.stringify(data, null, 2);
+          renderAp2CardFromResponse(data);
+          if (!response.ok || data.error) {
+            setStatus(`Request failed (${response.status}).`, true);
+            return;
+          }
+          setStatus("A2A response received.", false);
+        } catch (error) {
+          setStatus("Could not call A2A JSON-RPC endpoint.", true);
+          resultView.textContent = String(error);
+        } finally {
+          sendBtn.disabled = false;
+        }
+      });
+
+      if (prefill && autosend) {
+        setTimeout(() => {
+          sendBtn.click();
+        }, 150);
+      }
+
+      function findAgentText(payload) {
+        const messageTextFromParts = (parts) => {
+          if (!Array.isArray(parts)) return "";
+          return parts.map((p) => (p && p.kind === "text" ? String(p.text || "") : "")).join("\n").trim();
+        };
+        if (payload?.result?.parts) {
+          const t = messageTextFromParts(payload.result.parts);
+          if (t) return t;
+        }
+        if (payload?.result?.status?.message?.parts) {
+          const t = messageTextFromParts(payload.result.status.message.parts);
+          if (t) return t;
+        }
+        return "";
+      }
+
+      function parseBundleFromText(text) {
+        if (!text) return null;
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start === -1 || end === -1 || end <= start) return null;
+        try {
+          return JSON.parse(text.slice(start, end + 1));
+        } catch {
+          return null;
+        }
+      }
+
+      function renderAp2CardFromResponse(payload) {
+        const text = findAgentText(payload);
+        const bundle = parseBundleFromText(text);
+        if (!bundle || !bundle.intent_mandate || !bundle.payment_mandate) {
+          ap2CardView.textContent = "Could not parse AP2 payment draft from response.";
+          return;
+        }
+        const intent = bundle.intent_mandate;
+        const payment = bundle.payment_mandate;
+        const amt = intent.amount_max ? `${intent.amount_max.value} ${intent.amount_max.currency}` : "Not set";
+        const steps = Array.isArray(bundle.next_steps) ? bundle.next_steps : [];
+        ap2CardView.innerHTML = `
+          <div class="kv">
+            <div class="k">Intent ID</div><div>${intent.id || "-"}</div>
+            <div class="k">Payment ID</div><div>${payment.id || "-"}</div>
+            <div class="k">Amount Max</div><div>${amt}</div>
+            <div class="k">Merchant</div><div>${intent.merchant_id || "Not provided"}</div>
+            <div class="k">Rail</div><div>${payment.rail || "-"}</div>
+            <div class="k">Status</div><div>${payment.status || "-"}</div>
+            <div class="k">Expires At</div><div>${intent.expires_at || "-"}</div>
+          </div>
+          <hr style="border-color:#334155; margin:10px 0;" />
+          <div class="k">Next Steps</div>
+          <pre>${steps.length ? steps.map((s) => `- ${s}`).join("\n") : "No steps found."}</pre>
+        `;
+      }
+    </script>
+  </body>
+</html>

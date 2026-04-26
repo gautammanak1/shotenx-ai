@@ -1,0 +1,21 @@
+Diksha Sharma
+Email: diksha.sharma@example.com
+Phone: +91-9999999999
+Location: Bengaluru, India
+
+Summary:
+Backend engineer with 3+ years of experience building Node.js and TypeScript APIs.
+Strong in API reliability, logging, and LLM integrations.
+
+Experience:
+- Software Engineer, TechNova (2023-Present)
+  - Built Express APIs and agent workflows for hiring products.
+  - Integrated OpenAI-compatible APIs and JSON-based outputs.
+  - Improved validation and reduced failed requests in production.
+
+- Junior Engineer, ByteCraft (2021-2023)
+  - Developed and maintained REST services.
+  - Added tests and improved monitoring coverage.
+
+Skills:
+Node.js, TypeScript, Express, REST APIs, SQL, Docker, Git

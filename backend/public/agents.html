@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Integration Hub</title>
+    <style>
+      body { margin: 0; font-family: Arial, sans-serif; background: #0b1220; color: #e2e8f0; }
+      .container { max-width: 1080px; margin: 0 auto; padding: 24px; }
+      .subtitle { color: #94a3b8; margin-bottom: 18px; }
+      .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+      .card { background: #111827; border: 1px solid #334155; border-radius: 10px; padding: 16px; }
+      .card h3 { margin-top: 0; }
+      .badge { display: inline-block; font-size: 12px; color: #93c5fd; border: 1px solid #334155; border-radius: 999px; padding: 2px 8px; margin-right: 6px; }
+      a.btn { display: inline-block; margin-top: 10px; text-decoration: none; color: #052e16; background: #22c55e; font-weight: 700; padding: 9px 12px; border-radius: 8px; }
+      code { color: #bfdbfe; }
+      @media (max-width: 920px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Agent Integration Hub</h1>
+      <p class="subtitle">Two separated agents for integration: Resume Agent and Movie+Payment Agent.</p>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Resume Optimizer Agent</h3>
+          <p>Upload/paste resume + JD, monitor live activity, and view full JSON result.</p>
+          <div><span class="badge">Port 3000</span><span class="badge">REST</span></div>
+          <a class="btn" href="/resume-agent">Open Resume Agent UI</a>
+        </div>
+
+        <div class="card">
+          <h3>Movie + Payment Agent</h3>
+          <p>Ask movie questions, then proceed to AP2 payment draft in the same page.</p>
+          <div><span class="badge">Movie: 3000</span><span class="badge">Payment rail: 41242</span></div>
+          <a class="btn" href="/movie-agent">Open Movie + Payment UI</a>
+        </div>
+      </div>
+
+      <p style="margin-top:18px;color:#94a3b8;">
+        Run all agents with <code>npm run dev:all</code>
+      </p>
+    </div>
+  </body>
+</html>

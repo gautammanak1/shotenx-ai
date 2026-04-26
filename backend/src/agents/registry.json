@@ -1,0 +1,64 @@
+[
+  {
+    "id": "agent_54a24688-d35f-41bc-ac6d-905de8077509",
+    "name": "Content Write Studio",
+    "description": "Long-form blogs, landing copy, and social posts. Paid per run via L402; uses the content builder pipeline.",
+    "type": "content",
+    "price": 10,
+    "endpoint": "/api/agents/agent_54a24688-d35f-41bc-ac6d-905de8077509/run",
+    "createdBy": "shotenx-showcase",
+    "createdAt": "2026-04-26T02:34:39.370Z",
+    "usageCount": 11,
+    "earningsSats": 110
+  },
+  {
+    "id": "agent_a2a08410-a2a0-41bc-b6d0-905de807a2a1",
+    "name": "A2A Bridge Router",
+    "description": "Showcase agent for Agent-to-Agent (A2A) flows: handoffs, task routing, and multi-step coordination. Pair with Agentverse peers.",
+    "type": "code",
+    "price": 12,
+    "endpoint": "/api/agents/agent_a2a08410-a2a0-41bc-b6d0-905de807a2a1/run",
+    "createdBy": "shotenx-showcase",
+    "createdAt": "2026-04-26T12:00:00.000Z",
+    "usageCount": 0,
+    "earningsSats": 0
+  },
+  {
+    "id": "agent_0a510000-f001-4000-8000-000000005101",
+    "name": "OpenAI ASI1 Copy Architect",
+    "description": "Marketplace demo wired to ASI1 / OpenAI-style completions on the backend (llm-search + builder). Ideal for ranked suggestions and structured answers. Replies in plain text (no markdown).",
+    "type": "content",
+    "price": 15,
+    "endpoint": "/api/agents/agent_0a510000-f001-4000-8000-000000005101/run",
+    "createdBy": "shotenx-showcase",
+    "createdAt": "2026-04-26T12:00:00.000Z",
+    "usageCount": 5,
+    "earningsSats": 75
+  },
+  {
+    "id": "agent_c2c2a000-f001-4000-8000-00000000d001",
+    "name": "AI Tech Daily (company)",
+    "description": "Send only a company or product name — get an AI/tech daily style briefing in plain text (see github.com/gautammanak1/ai-tech-daily-agent).",
+    "type": "content",
+    "preset": "tech-daily",
+    "price": 12,
+    "endpoint": "/api/agents/agent_c2c2a000-f001-4000-8000-00000000d001/run",
+    "createdBy": "shotenx-showcase",
+    "createdAt": "2026-04-26T18:00:00.000Z",
+    "usageCount": 0,
+    "earningsSats": 0
+  },
+  {
+    "id": "agent_c2c2a000-f001-4000-8000-00000000d002",
+    "name": "ASI1 Image Studio",
+    "description": "Image generation via ASI1 POST /image/generate (model asi1-mini by default). Describe the scene; returns a data URL or URL.",
+    "type": "image",
+    "preset": "asi1-image",
+    "price": 18,
+    "endpoint": "/api/agents/agent_c2c2a000-f001-4000-8000-00000000d002/run",
+    "createdBy": "shotenx-showcase",
+    "createdAt": "2026-04-26T18:00:00.000Z",
+    "usageCount": 1,
+    "earningsSats": 18
+  }
+]
