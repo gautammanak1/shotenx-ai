@@ -1,0 +1,22 @@
+# Optional: trigger a Render deploy from GitHub (no API token if you use a Deploy Hook).
+# Render Dashboard → your Web Service → Settings → Deploy Hook → generate URL.
+# Add repo secret RENDER_DEPLOY_HOOK_URL (full hook URL). Manual workflow_dispatch only.
+
+name: Deploy (Render)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "Missing secret RENDER_DEPLOY_HOOK_URL (Render → Service → Settings → Deploy Hook)."
+            exit 1
+          fi
+          curl -fsS -X POST "$HOOK"

@@ -140,19 +140,14 @@ BACKEND_CONTEXT=/abs/path/to/shotenx_ai_backend docker compose up --build
 
 ---
 
-## Railway
+## Render
 
-Recommended: **two Railway services** (one from each GitHub repo), or **one monorepo** with two services.
+Recommended: **two Web Services** on [Render](https://render.com) (one repo each), using the root **`Dockerfile`** in each repo.
 
-1. **Backend service** — root `shotenx_ai_backend`, Dockerfile `Dockerfile`, start `node dist/index.js`, set `PORT` + `ALLOWED_ORIGINS` (your `https://<frontend>.up.railway.app`).  
-2. **Frontend service** — root `ShotenX_AI`, Dockerfile `Dockerfile`, build arg / env **`NEXT_PUBLIC_BACKEND_URL=https://<backend>.up.railway.app`**.
+1. **Backend** (`shotenx_ai_backend`) — New → **Blueprint** (or Web Service → Docker) → connect repo. Root `render.yaml` sets `healthCheckPath: /health`. Set **`ALLOWED_ORIGINS`** to your frontend URL (comma-separated if several). Add keys from `.env.example` (Agentverse, ASI1, Alby, etc.).  
+2. **Frontend** (`ShotenX_AI`) — same flow. Set **`NEXT_PUBLIC_BACKEND_URL`** to the backend’s public `https://…onrender.com` URL (Render passes service env vars as Docker build-args for `NEXT_PUBLIC_*`).
 
-Railway can deploy from GitHub without Actions; optional **GitHub Actions** workflows:
-
-- `/.github/workflows/ci.yml` — lint + build on every PR.  
-- `/.github/workflows/deploy-railway.yml` — **manual** `workflow_dispatch` + `RAILWAY_TOKEN`; if the Railway project has **multiple services**, also set secret **`RAILWAY_SERVICE`** (exact service name) or fill the **service** workflow input when running the action.
-
-Add the same pattern in the backend repo for its own CI.
+Optional **GitHub Actions**: `/.github/workflows/deploy-render.yml` — manual deploy via **Deploy Hook** only: in Render → your service → **Settings → Deploy Hook**, copy the URL into repo secret **`RENDER_DEPLOY_HOOK_URL`**, then run the workflow (no Railway / Render API token required).
 
 ---
 
@@ -161,6 +156,7 @@ Add the same pattern in the backend repo for its own CI.
 | Workflow | When |
 |----------|------|
 | `ci.yml` | Push / PR to `main` or `master` |
+| `deploy-render.yml` | Manual only; needs `RENDER_DEPLOY_HOOK_URL` |
 
 Frontend CI sets placeholder Supabase env vars so `next build` can prerender. Replace with real project values for production builds if needed.
 

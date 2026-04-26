@@ -1,0 +1,16 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploy: New → Blueprint → connect this repo. Then edit env vars in the dashboard
+# (Supabase, ASI1, Agentverse, etc.). Set NEXT_PUBLIC_BACKEND_URL to your backend URL.
+
+version: "1"
+services:
+  - type: web
+    name: shotenx-frontend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BACKEND_URL
+        value: https://your-backend.onrender.com
