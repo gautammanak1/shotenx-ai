@@ -150,7 +150,7 @@ Recommended: **two Railway services** (one from each GitHub repo), or **one mono
 Railway can deploy from GitHub without Actions; optional **GitHub Actions** workflows:
 
 - `/.github/workflows/ci.yml` — lint + build on every PR.  
-- `/.github/workflows/deploy-railway.yml` — **manual** `workflow_dispatch` + `RAILWAY_TOKEN` if you prefer CLI deploy.
+- `/.github/workflows/deploy-railway.yml` — **manual** `workflow_dispatch` + `RAILWAY_TOKEN`; if the Railway project has **multiple services**, also set secret **`RAILWAY_SERVICE`** (exact service name) or fill the **service** workflow input when running the action.
 
 Add the same pattern in the backend repo for its own CI.
 

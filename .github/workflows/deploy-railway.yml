@@ -7,6 +7,8 @@
 # 1. Create a Railway project + Web service linked to this repo (or use CLI).
 # 2. Add repo secret RAILWAY_TOKEN (Railway Account → Tokens; paste value in GitHub secret name RAILWAY_TOKEN).
 # 3. In Railway service settings, set root directory if needed and all env vars from .env.example.
+# 4. If the Railway project has multiple services, set repo secret RAILWAY_SERVICE to that
+#    service's name (Dashboard → service title), or pass the "service" input when you run the workflow.
 #
 # This workflow only runs when you trigger it manually (avoids failing pushes without tokens).
 
@@ -14,6 +16,12 @@ name: Deploy (Railway)
 
 on:
   workflow_dispatch:
+    inputs:
+      service:
+        description: "Railway service name (required when the project has multiple services)"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   deploy:
@@ -27,5 +35,13 @@ jobs:
       - name: Deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
-        # Run `railway link` locally once and commit .railway/ or set RAILWAY_PROJECT_ID / service via Railway dashboard GitHub integration instead.
+        run: |
+          set -e
+          SVC='${{ github.event.inputs.service }}'
+          if [ -z "$SVC" ]; then SVC='${{ secrets.RAILWAY_SERVICE }}'; fi
+          if [ -n "$SVC" ]; then
+            echo "Deploying to service: $SVC"
+            railway up --detach --service "$SVC"
+          else
+            railway up --detach
+          fi
