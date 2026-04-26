@@ -83,13 +83,13 @@ const PRODUCT_LINKS = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#030303] text-[#fafafa]">
+    <div className="min-h-screen bg-background text-foreground dark:bg-[#030303] dark:text-[#fafafa]">
       <Navbar />
 
-      <section className="relative overflow-hidden border-b border-[#1a1a1a]">
+      <section className="relative overflow-hidden border-b border-border dark:border-[#1a1a1a]">
         <GridBackground />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,255,255,0.08),transparent)]" />
-        <div className="relative mx-auto max-w-5xl px-6 py-24 text-center sm:py-32">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(0,0,0,0.06),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,255,255,0.08),transparent)]" />
+        <div className="relative mx-auto max-w-5xl px-4 py-16 text-center sm:px-6 sm:py-24 md:py-32">
           <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
             <motion.p
               variants={fadeUp}
@@ -113,23 +113,26 @@ export default function LandingPage() {
               ShotenX is a focused marketplace and chat surface for paid AI agents: invoices, optional Bitcoin
               Connect, and a monochrome UI built for clarity — ship demos without noise.
             </motion.p>
-            <motion.div variants={fadeUp} className="mt-12 flex flex-wrap justify-center gap-3">
+            <motion.div
+              variants={fadeUp}
+              className="mt-10 flex w-full max-w-md flex-col items-stretch justify-center gap-3 sm:mx-auto sm:mt-12 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center"
+            >
               <Link
                 href="/marketplace"
-                className="group inline-flex items-center gap-2 rounded-sm border border-[#fafafa] bg-[#fafafa] px-8 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#030303] transition-all hover:bg-[#e5e5e5] active:scale-[0.98]"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-sm border border-foreground bg-foreground px-6 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-background transition-all hover:opacity-90 active:scale-[0.98] sm:w-auto sm:px-8 dark:border-[#fafafa] dark:bg-[#fafafa] dark:text-[#030303] dark:hover:bg-[#e5e5e5]"
               >
                 Open marketplace
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </Link>
               <Link
                 href="/agent-chat"
-                className="rounded-sm border border-[#3a3a3a] bg-transparent px-8 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#b0b0b0] transition-colors hover:border-[#666666] hover:text-white"
+                className="w-full rounded-sm border border-border bg-transparent px-6 py-3.5 text-center font-mono text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground sm:w-auto sm:px-8 dark:border-[#3a3a3a] dark:text-[#b0b0b0] dark:hover:border-[#666666] dark:hover:text-white"
               >
                 Try agent chat
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center gap-1.5 px-5 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#666666] hover:text-[#cccccc]"
+                className="inline-flex w-full items-center justify-center gap-1.5 px-5 py-3 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground sm:w-auto sm:py-3.5 dark:text-[#666666] dark:hover:text-[#cccccc]"
               >
                 Read docs
               </Link>
@@ -140,8 +143,8 @@ export default function LandingPage() {
 
       <MarqueeStrip />
 
-      <section className="border-b border-[#1a1a1a] bg-[#080808] py-16">
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-10 px-6 sm:grid-cols-3">
+      <section className="border-b border-border bg-muted/30 py-12 dark:border-[#1a1a1a] dark:bg-[#080808] sm:py-16">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 sm:gap-10 sm:px-6 md:grid-cols-3">
           {[
             { k: "Model", v: "L402 + invoices", s: "Challenge → pay → execute. Replay-safe verification." },
             { k: "Output", v: "Plain & practical", s: "Readable text; images when the API returns data URLs." },
@@ -156,15 +159,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#1a1a1a] bg-[#030303] py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="border-b border-border bg-background py-14 dark:border-[#1a1a1a] dark:bg-[#030303] sm:py-20 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-center font-mono text-[10px] uppercase tracking-[0.32em] text-[#555555]">
             Why teams try ShotenX
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-sm text-[#777777]">
             One surface for discovery, payment, and delivery — tuned for builders who care about UX and Lightning.
           </p>
-          <div className="mt-14 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 sm:mt-14 md:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
@@ -181,8 +184,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#1a1a1a] bg-[#080808] py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="border-b border-border bg-muted/30 py-14 dark:border-[#1a1a1a] dark:bg-[#080808] sm:py-20 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-center font-mono text-[10px] uppercase tracking-[0.32em] text-[#555555]">
             Architecture at a glance
           </h2>
@@ -201,8 +204,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#1a1a1a] bg-[#030303] py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="border-b border-border bg-background py-14 dark:border-[#1a1a1a] dark:bg-[#030303] sm:py-20 md:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-center font-mono text-[10px] uppercase tracking-[0.32em] text-[#555555]">Explore</h2>
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             {PRODUCT_LINKS.map(({ href, label, blurb, icon: Icon }) => (
@@ -223,37 +226,37 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#1a1a1a] bg-[#080808] py-20">
-        <div className="mx-auto max-w-3xl px-6">
+      <section className="border-b border-border bg-muted/30 py-14 dark:border-[#1a1a1a] dark:bg-[#080808] sm:py-20">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <h2 className="text-center font-mono text-[10px] uppercase tracking-[0.32em] text-[#555555]">
             Flow preview
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-center text-sm text-[#777777]">
             Request → invoice → settle. Same rhythm as paid tools and agent runs.
           </p>
-          <div className="mt-10">
-            <Terminal lines={btcAgentSequence} autoPlay loop height={300} />
+          <div className="mt-10 min-w-0 overflow-x-auto">
+            <Terminal lines={btcAgentSequence} autoPlay loop height={280} className="w-full min-w-0" />
           </div>
         </div>
       </section>
 
-      <section className="bg-[#030303] py-20 text-center">
-        <h2 className="font-mono text-xl font-bold tracking-tight text-[#ffffff] sm:text-2xl">
+      <section className="bg-background px-4 py-14 text-center dark:bg-[#030303] sm:py-20">
+        <h2 className="font-mono text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
           Ready for a paid run?
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-sm text-[#888888]">
+        <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground dark:text-[#888888]">
           Start in the marketplace or open agent chat. Use backend test mode when invoices are mocked.
         </p>
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <div className="mx-auto mt-8 flex w-full max-w-sm flex-col gap-3 sm:mt-10 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
           <Link
             href="/marketplace"
-            className="rounded-sm bg-[#fafafa] px-8 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#030303] hover:bg-[#dddddd] active:scale-[0.98]"
+            className="rounded-sm bg-foreground px-6 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-background hover:opacity-90 active:scale-[0.98] sm:px-8 dark:bg-[#fafafa] dark:text-[#030303] dark:hover:bg-[#dddddd]"
           >
             Marketplace
           </Link>
           <Link
             href="/agent-chat"
-            className="rounded-sm border border-[#444444] px-8 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-[#b0b0b0] hover:border-white hover:text-white"
+            className="rounded-sm border border-border px-6 py-3.5 font-mono text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground hover:border-foreground hover:text-foreground sm:px-8 dark:border-[#444444] dark:text-[#b0b0b0] dark:hover:border-white dark:hover:text-white"
           >
             Agent chat
           </Link>

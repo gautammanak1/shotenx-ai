@@ -1,9 +1,3 @@
-# Monorepo: frontend (Next) + backend (Express).
-# Variables: repo root `.env` (copy from `.env.example`). Compose substitutes ${VAR} from that file.
-#   docker compose up --build
-#
-# `env_file` injects the whole file into each container; `environment` below
-# documents / overrides keys (inline wins over env_file).
 
 services:
   backend:
@@ -29,7 +23,6 @@ services:
       ASI_ONE_BASE_URL: ${ASI_ONE_BASE_URL:-https://api.asi1.ai/v1}
       ASI_ONE_MODEL: ${ASI_ONE_MODEL:-asi1}
       ASI_IMAGE_MODEL: ${ASI_IMAGE_MODEL:-asi1-mini}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       BUILDER_LLM_MODEL: ${BUILDER_LLM_MODEL:-}
       BUILDER_IMAGE_MODEL: ${BUILDER_IMAGE_MODEL:-}
       UAGENT_DEFAULT_SEED: ${UAGENT_DEFAULT_SEED:-frontend}

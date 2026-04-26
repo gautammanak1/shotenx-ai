@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { Sidebar } from "@/components/sidebar";
-import { Topbar } from "@/components/topbar";
+import { DashboardShell } from "@/components/dashboard-shell";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -30,13 +29,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar user={user} />
-        <main className="flex-1 overflow-y-auto bg-[#0a0a0a] p-6">{children}</main>
-      </div>
-    </div>
-  );
+  return <DashboardShell user={user}>{children}</DashboardShell>;
 }

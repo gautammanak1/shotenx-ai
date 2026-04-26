@@ -47,6 +47,18 @@
 
 .light {
   color-scheme: light;
+  --bg-base: #f4f4f5;
+  --bg-surface: #fafafa;
+  --bg-raised: #e4e4e7;
+  --bg-hover: #d4d4d8;
+  --bg-active: #c4c4cc;
+  --border-dim: #d4d4d8;
+  --border-mid: #a1a1aa;
+  --border-bright: #52525b;
+  --text-primary: #09090b;
+  --text-secondary: #3f3f46;
+  --text-muted: #71717a;
+  --text-inverse: #fafafa;
   --background: 0 0% 98%;
   --foreground: 0 0% 4%;
   --card: 0 0% 96%;
@@ -328,14 +340,23 @@ body {
 
 .toast-viewport {
   position: fixed;
-  bottom: 1.25rem;
-  right: 1.25rem;
+  bottom: 1rem;
+  right: 1rem;
+  left: 1rem;
   z-index: 9999;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  width: 320px;
+  width: auto;
+  max-width: min(320px, calc(100vw - 2rem));
+  margin-left: auto;
   pointer-events: none;
+}
+@media (min-width: 480px) {
+  .toast-viewport {
+    left: auto;
+    width: min(320px, calc(100vw - 2rem));
+  }
 }
 .toast {
   pointer-events: auto;

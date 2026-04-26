@@ -113,6 +113,11 @@ function mapSuggestedAgent(s: LlmAgentSuggestion): MarketAgent {
   };
 }
 
+function formatSettledReason(reason: unknown): string {
+  if (reason instanceof Error) return reason.message;
+  return String(reason);
+}
+
 function agentMatchesCategory(agent: MarketAgent, cat: CategoryFilter): boolean {
   if (cat === "All") return true;
   const blob = `${agent.category} ${agent.name} ${agent.desc}`.toLowerCase();
@@ -159,6 +164,8 @@ export default function MarketplacePage() {
   const [agents, setAgents] = useState<MarketAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  /** Bumps when user hits Retry so we refetch even if `query` is unchanged. */
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -196,12 +203,31 @@ export default function MarketplacePage() {
           if (!merged.has(k)) merged.set(k, m);
         });
       }
-      if (merged.size === 0) setError("No data received from backend. Please check backend services.");
+      if (merged.size === 0) {
+        const apiBase = process.env.NEXT_PUBLIC_BACKEND_URL || "(NEXT_PUBLIC_BACKEND_URL not set)";
+        const parts: string[] = [];
+        if (br.status === "rejected") parts.push(`Search: ${formatSettledReason(br.reason)}`);
+        if (sr.status === "rejected") parts.push(`Suggestions: ${formatSettledReason(sr.reason)}`);
+        if (reg.status === "rejected") parts.push(`Registry: ${formatSettledReason(reg.reason)}`);
+        const allRejected =
+          br.status === "rejected" && sr.status === "rejected" && reg.status === "rejected";
+        if (allRejected) {
+          setError(
+            `Cannot reach the API. In production set NEXT_PUBLIC_BACKEND_URL to your Express root (e.g. https://your-backend.onrender.com). Same hostname is OK if nginx routes /api to Express — use that full origin, no /api suffix. Current: ${apiBase}. ${parts.join(" ")}`
+          );
+        } else if (parts.length > 0) {
+          setError(`No agents to show. ${parts.join(" ")} API base: ${apiBase}`);
+        } else {
+          setError(
+            `No agents in the catalog (empty responses). Check backend logs and AGENTVERSE_* env. API base: ${apiBase}`
+          );
+        }
+      }
       setAgents(sortPinnedAgentsFirst(Array.from(merged.values())));
       setLoading(false);
     }, 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, reloadToken]);
 
   const filtered = useMemo(
     () =>
@@ -341,7 +367,7 @@ export default function MarketplacePage() {
                   <span>{error}</span>
                   <button
                     type="button"
-                    onClick={() => setQuery((q) => q)}
+                    onClick={() => setReloadToken((n) => n + 1)}
                     className="shrink-0 border border-[#333333] px-3 py-1 text-[10px] uppercase tracking-widest text-[#ffffff] hover:bg-[#1a1a1a]"
                   >
                     Retry

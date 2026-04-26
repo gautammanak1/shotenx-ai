@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 
 /* ── Theme ── */
@@ -25,12 +32,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, []);
 
-  const toggle = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    applyThemeClass(next);
-  };
+  const toggle = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === "light" ? "dark" : "light";
+      localStorage.setItem("theme", next);
+      applyThemeClass(next);
+      return next;
+    });
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>

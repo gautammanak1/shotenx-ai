@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { ensureBitcoinConnectInit } from "@/lib/bitcoin-connect-init";
 
-export function WalletConnect() {
+export function WalletConnect({ compact }: { compact?: boolean }) {
   const [connected, setConnected] = useState(false);
   const [ready, setReady] = useState(false);
   const [balanceSats, setBalanceSats] = useState<number | null>(null);
@@ -84,21 +84,34 @@ export function WalletConnect() {
           ? { label: "Backend wallet", className: "border-[#333333] bg-[#111111] text-[#666666]" }
           : null;
 
+  const walletLabel = !ready
+    ? compact
+      ? "…"
+      : "Loading Wallet..."
+    : connected
+      ? compact
+        ? "Connected"
+        : "Wallet Connected"
+      : compact
+        ? "Wallet"
+        : "Connect Wallet";
+
   return (
-    <div className="inline-flex flex-wrap items-center gap-2">
+    <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-1 sm:gap-2">
       <button
+        type="button"
         onClick={handleClick}
         disabled={!ready}
-        className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+        className="rounded-md border border-border bg-card px-2 py-1.5 text-xs hover:bg-muted sm:px-3 sm:text-sm"
       >
-        {!ready ? "Loading Wallet..." : connected ? "Wallet Connected" : "Connect Wallet"}
+        {walletLabel}
       </button>
-      {connected && balanceSats !== null && (
-        <span className="rounded-md border px-2 py-1 text-xs text-muted-foreground">
+      {connected && balanceSats !== null && !compact && (
+        <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
           {balanceSats} sats
         </span>
       )}
-      {modeBadge && (
+      {modeBadge && !compact && (
         <span
           title={
             backendMode === "test"

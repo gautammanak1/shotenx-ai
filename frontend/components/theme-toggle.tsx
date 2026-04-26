@@ -7,6 +7,7 @@ export function ThemeToggle() {
   const { theme, toggle } = useTheme();
   return (
     <button
+      type="button"
       onClick={toggle}
       className="flex h-8 w-8 items-center justify-center border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       aria-label="Toggle theme"
